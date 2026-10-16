@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 
 export default async function AdminPage() {
   if (!(await isAdmin())) return <AdminLogin configured={adminConfigured()} />;
-  return <AdminDashboard shows={await getShows()} canTranslate={translateConfigured()} />;
+  return <AdminDashboard shows={await getShows({ fresh: true })} canTranslate={translateConfigured()} />;
 }

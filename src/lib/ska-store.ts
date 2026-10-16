@@ -1,14 +1,17 @@
 import 'server-only';
-import { del, get, list, put } from '@vercel/blob';
+import { BlobNotFoundError, del, head, list, put } from '@vercel/blob';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type Zone } from '@/components/ska/data';
 
 // Two storage backends behind one API:
-// - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). The show list is one JSON
-//   blob read with the CDN cache bypassed, so the admin sees its own saves at once; every save also
-//   writes a timestamped backup. Images are public blobs served straight from the Blob CDN.
+// - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). The show list is one public
+//   JSON blob. Reads ask the Blob API for its current etag and fetch the file with that etag in the
+//   URL, so the CDN can't hand back an older copy; public pages also keep the result in Next's data
+//   cache (tag `ska-shows`), which every save expires at once. Every save also writes a timestamped
+//   backup. Images are public blobs served straight from the Blob CDN.
 // - Local disk under /data/ska otherwise (development on this PC). Images are served by
 //   /api/ska/media/[file].
 
@@ -26,15 +29,24 @@ const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/
 const BLOB_SHOWS = 'ska/data/shows.json';
 const BLOB_BACKUPS = 'ska/backups/';
 
+const SHOWS_TAG = 'ska-shows';
+
 const useBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 
 /* ---------- shows ---------- */
 
 async function readShows(): Promise<Show[] | null> {
   if (useBlob()) {
-    const res = await get(BLOB_SHOWS, { access: 'public', useCache: false });
-    if (!res || res.statusCode !== 200) return null;
-    return (await new Response(res.stream).json()) as Show[];
+    let meta;
+    try {
+      meta = await head(BLOB_SHOWS);
+    } catch (e) {
+      if (e instanceof BlobNotFoundError) return null;
+      throw e;
+    }
+    const res = await fetch(`${meta.url}?v=${encodeURIComponent(meta.etag || String(meta.uploadedAt.getTime()))}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Reading ${BLOB_SHOWS} failed: ${res.status}`);
+    return (await res.json()) as Show[];
   }
   try {
     return JSON.parse(await readFile(SHOWS_FILE, 'utf8')) as Show[];
@@ -43,8 +55,14 @@ async function readShows(): Promise<Show[] | null> {
   }
 }
 
-export async function getShows(): Promise<Show[]> {
-  const shows = (await readShows()) ?? structuredClone(DEFAULT_SHOWS);
+const readShowsCached = unstable_cache(async () => (await readShows()) ?? DEFAULT_SHOWS, ['ska-shows'], {
+  tags: [SHOWS_TAG],
+  revalidate: 3600,
+});
+
+/** All shows, oldest first. `fresh` skips the data cache (admin, and before every write). */
+export async function getShows({ fresh = false } = {}): Promise<Show[]> {
+  const shows = useBlob() && !fresh ? structuredClone(await readShowsCached()) : ((await readShows()) ?? structuredClone(DEFAULT_SHOWS));
   return shows.sort((a, b) => a.start.localeCompare(b.start));
 }
 
@@ -65,7 +83,9 @@ async function writeShows(shows: Show[]) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   if (useBlob()) {
     const opts = { access: 'public', contentType: 'application/json', addRandomSuffix: false } as const;
-    await put(BLOB_SHOWS, json, { ...opts, allowOverwrite: true });
+    // short CDN lifetime: reads already add the etag to the URL, this just limits stale copies further
+    await put(BLOB_SHOWS, json, { ...opts, allowOverwrite: true, cacheControlMaxAge: 60 });
+    revalidateTag(SHOWS_TAG, { expire: 0 });
     // every save also lands in ska/backups/ so a bad edit can be undone
     await put(`${BLOB_BACKUPS}shows-${stamp}.json`, json, opts);
     const { blobs } = await list({ prefix: BLOB_BACKUPS, limit: 1000 });
@@ -89,7 +109,7 @@ const imagesOf = (s?: Show) =>
 /** Creates (no slug) or updates a show. Returns the saved show. */
 export function saveShow(raw: unknown) {
   return locked(async () => {
-    const shows = await getShows();
+    const shows = await getShows({ fresh: true });
     const input = normalizeShow(raw);
     const i = shows.findIndex((s) => s.slug === input.slug);
     const prev = i >= 0 ? shows[i] : undefined;
@@ -111,7 +131,7 @@ export function saveShow(raw: unknown) {
 
 export function deleteShow(slug: string) {
   return locked(async () => {
-    const shows = await getShows();
+    const shows = await getShows({ fresh: true });
     const show = shows.find((s) => s.slug === slug);
     if (!show) return false;
     await writeShows(shows.filter((s) => s.slug !== slug));

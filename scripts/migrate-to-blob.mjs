@@ -54,7 +54,7 @@ if (DRY) {
 } else {
   const json = JSON.stringify(shows, null, 2);
   const opts = { access: 'public', contentType: 'application/json', addRandomSuffix: false };
-  await put('ska/data/shows.json', json, { ...opts, allowOverwrite: true });
+  await put('ska/data/shows.json', json, { ...opts, allowOverwrite: true, cacheControlMaxAge: 60 });
   await put(`ska/backups/shows-${new Date().toISOString().replace(/[:.]/g, '-')}-migrated.json`, json, opts);
   console.log(`\nDone: ${shows.length} shows, ${uploaded.size} images now in Vercel Blob.`);
 }

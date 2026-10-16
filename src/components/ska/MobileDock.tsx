@@ -4,8 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { L } from './data';
-import { Arrow, Layer, useLang } from './ui';
+import { SOCIALS, type L } from './data';
+import { Arrow, Layer, SocialIcon, useLang } from './ui';
 
 const SECTIONS: { id: string; label: L }[] = [
   { id: 'stages', label: { en: 'Our Stages', ko: '오리지널 IP' } },
@@ -156,6 +156,20 @@ export default function MobileDock() {
               <Link href="/#casting" onClick={() => setOpen(false)} className={`ska-btn ska-btn-chrome justify-center !py-3 !text-sm ${onHome ? 'col-span-2' : ''}`}>
                 {t({ en: 'Book an Artist', ko: '캐스팅 문의' })} <Arrow />
               </Link>
+            </div>
+            <div className="mt-4 flex justify-center gap-3">
+              {SOCIALS.map((s) => (
+                <a
+                  key={s.name}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.name}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-white/70 transition hover:border-white hover:text-white"
+                >
+                  <SocialIcon name={s.name} className="h-5 w-5" />
+                </a>
+              ))}
             </div>
           </div>
         </div>

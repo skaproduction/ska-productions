@@ -4,9 +4,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CONTACT_EMAIL } from './data';
+import { CONTACT_EMAIL, SOCIALS } from './data';
 import MobileDock from './MobileDock';
-import { Arrow, LangProvider, Magnetic, useLang } from './ui';
+import { Arrow, LangProvider, Magnetic, SocialIcon, useLang } from './ui';
 
 const NAV = [
   { href: '/#stages', label: { en: 'Our Stages', ko: '오리지널 IP' } },
@@ -190,7 +190,13 @@ function Footer() {
                   </Link>
                 </li>
                 <li>Seoul, Korea</li>
-                <li>Instagram · YouTube</li>
+                {SOCIALS.map((s) => (
+                  <li key={s.name}>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white">
+                      <SocialIcon name={s.name} className="h-4 w-4" /> {s.name}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

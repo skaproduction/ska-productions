@@ -1,5 +1,5 @@
 // One-time copy of the local admin data (data/ska) into Vercel Blob.
-// Needs BLOB_READ_WRITE_TOKEN in .env.local (`vercel env pull` after creating the Blob store), then:
+// Needs BLOB_READ_WRITE_TOKEN in .env.blob (kept out of .env.local so local dev keeps using disk), then:
 //   npm run migrate:blob            upload images, then write the show list
 //   npm run migrate:blob -- --dry   only print what would happen
 // Safe to re-run: images keep their file names, and the show list is overwritten as a whole.
@@ -12,7 +12,7 @@ const ROOT = path.join(process.cwd(), 'data', 'ska');
 const LOCAL = '/api/ska/media/';
 
 if (!process.env.BLOB_READ_WRITE_TOKEN && !DRY) {
-  console.error('BLOB_READ_WRITE_TOKEN is not set. Run `vercel env pull .env.local` first.');
+  console.error('BLOB_READ_WRITE_TOKEN is not set. Put it in .env.blob first.');
   process.exit(1);
 }
 

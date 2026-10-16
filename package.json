@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "migrate:blob": "node --env-file=.env.local scripts/migrate-to-blob.mjs"
+    "migrate:blob": "node --env-file=.env.blob scripts/migrate-to-blob.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

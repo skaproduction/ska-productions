@@ -25,9 +25,9 @@ Settings live in `.env.local` (see `.env.example`):
 2. In the Vercel project: **Storage → Create → Blob** and connect it to the project
    (this adds `BLOB_READ_WRITE_TOKEN`).
 3. **Settings → Environment Variables**: add `SKA_ADMIN_PASSWORD` (and the optional ones).
-4. Copy the current local data into Blob once:
+4. Copy the current local data into Blob once. Put the store's `BLOB_READ_WRITE_TOKEN` in
+   `.env.blob` (not `.env.local`, so local dev keeps using disk and never touches live data):
    ```bash
-   vercel env pull .env.local
    npm run migrate:blob -- --dry   # check
    npm run migrate:blob
    ```

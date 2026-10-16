@@ -43,3 +43,6 @@ next-env.d.ts
 # SKA admin uploads (posters)
 /data/
 !.env.example
+
+.vercel
+.env*.local

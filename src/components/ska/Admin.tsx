@@ -544,8 +544,7 @@ function ShowEditor({
                       key={x.id}
                       type="button"
                       onClick={() =>
-                        // a series fills in its name as the title; SHOW clears it so the show's own title is typed
-                        setD((p) => ({ ...p, brand: x.id, title: p.title === brandById(p.brand).name || !p.title ? (x.series === false ? '' : x.name) : p.title }))
+                        setD((p) => ({ ...p, brand: x.id, title: p.title === brandById(p.brand).name || !p.title ? x.name : p.title }))
                       }
                       className="rounded-full border px-4 py-2 text-xs font-semibold transition"
                       style={{

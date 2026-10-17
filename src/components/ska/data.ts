@@ -2,7 +2,7 @@
 // src/lib/ska-store.ts; DEFAULT_SHOWS only seeds the store until the first admin save.
 
 export type L = { en: string; ko: string };
-export type BrandId = 'kpop' | 'rock' | 'swag' | 'show';
+export type BrandId = 'kpop' | 'rock' | 'swag' | 'concert';
 
 export type Brand = {
   id: BrandId;
@@ -60,8 +60,8 @@ export const BRANDS: Brand[] = [
     accent2: '#ffd400',
   },
   {
-    id: 'show',
-    name: 'SHOW',
+    id: 'concert',
+    name: 'CONCERT',
     short: 'SKA',
     genre: { en: 'Concert & Show', ko: '콘서트 · 공연' },
     tagline: { en: 'Produced by SKA.', ko: 'SKA가 만드는 무대.' },
@@ -75,7 +75,7 @@ export const BRANDS: Brand[] = [
   },
 ];
 
-/** SKA's own festival series (KPOP PRIME, 7 ROCK PRIME, SKA SUPER SWAG), without the catch-all SHOW. */
+/** SKA's own festival series (KPOP PRIME, 7 ROCK PRIME, SKA SUPER SWAG), without the catch-all CONCERT. */
 export const SERIES = BRANDS.filter((b) => b.series !== false);
 
 export const brandById = (id: BrandId) => BRANDS.find((b) => b.id === id)!;

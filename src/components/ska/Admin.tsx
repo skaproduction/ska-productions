@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BRANDS, ZONES, brandById, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from './data';
 import MusicSettings from './MusicSettings';
+import VisitorStats from './VisitorStats';
 import SeatMapEditor from './SeatMapEditor';
 import { Arrow, Layer, Poster, fmtDate, useLang } from './ui';
 
@@ -279,6 +280,8 @@ export function AdminDashboard({
             </button>
           </div>
         </div>
+
+        <VisitorStats shows={shows} />
 
         <MusicSettings settings={settings} upload={uploadMedia} onToast={setToast} />
 

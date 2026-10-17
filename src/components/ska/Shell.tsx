@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import BgmPlayer from './BgmPlayer';
+import Tracker from './Tracker';
 import { CONTACT_EMAIL, SOCIALS, type SiteSettings } from './data';
 import MobileDock from './MobileDock';
 import { Arrow, LangProvider, Magnetic, SocialIcon, useLang } from './ui';
@@ -58,6 +59,7 @@ export default function Shell({ children, bgm }: { children: ReactNode; bgm?: Si
         <Footer />
         <MobileDock />
         <BgmPlayer bgm={bgm} />
+        <Tracker />
       </div>
     </LangProvider>
   );

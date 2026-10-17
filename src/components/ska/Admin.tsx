@@ -149,9 +149,10 @@ const ISO_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(Z|[+-]\d{2}:\d{2})
 const emptyL = (): L => ({ en: '', ko: '' });
 const newId = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-function toDraft(show?: Show): Draft {
+function toDraft(show?: Show, past = false): Draft {
   if (!show) {
-    const d = new Date(Date.now() + 60 * 864e5);
+    // a new upcoming show starts two months out; a new past show (for History) a year back
+    const d = new Date(Date.now() + (past ? -365 : 60) * 864e5);
     return {
       slug: '',
       brand: 'kpop',
@@ -230,7 +231,7 @@ export function AdminDashboard({
   const { t, lang } = useLang();
   const router = useRouter();
   const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [editing, setEditing] = useState<Show | 'new' | null>(null);
+  const [editing, setEditing] = useState<Show | 'new' | 'new-past' | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -307,17 +308,21 @@ export function AdminDashboard({
           ))}
         </div>
 
-        {list.length === 0 ? (
-          <p className="mt-10 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center text-white/50">
-            {tab === 'upcoming'
-              ? t({ en: 'No upcoming shows. Add one with “New show”.', ko: '예정된 공연이 없습니다. “새 공연”으로 추가하세요.' })
-              : t({
-                  en: 'No past shows yet. Shows land here automatically after their date — or add a past show with “New show”.',
-                  ko: '아직 지난 공연이 없습니다. 날짜가 지난 공연은 자동으로 이곳에 들어오며, “새 공연”에서 과거 날짜로 추가할 수도 있습니다.',
-                })}
-          </p>
-        ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <button
+            onClick={() => setEditing(tab === 'upcoming' ? 'new' : 'new-past')}
+            className="group flex min-h-[176px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 p-4 text-center text-white/55 transition hover:border-white/60 hover:bg-white/[0.03] hover:text-white"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-current text-2xl leading-none transition group-hover:scale-110">+</span>
+            <span className="text-sm font-semibold">
+              {tab === 'upcoming' ? t({ en: 'Add upcoming show', ko: '예정 공연 추가' }) : t({ en: 'Add past show', ko: '지난 공연 추가' })}
+            </span>
+            <span className="max-w-[240px] text-[11px] text-white/35">
+              {tab === 'upcoming'
+                ? t({ en: 'Moves to History by itself once the date passes.', ko: '공연 날짜가 지나면 자동으로 History로 이동해요.' })
+                : t({ en: 'Starts with a past date — set the real one.', ko: '과거 날짜로 시작해요. 실제 공연 날짜로 바꿔주세요.' })}
+            </span>
+          </button>
             {list.map((s) => {
               const b = brandById(s.brand);
               const announced = s.lineup.filter((a) => a.announced).length;
@@ -350,15 +355,15 @@ export function AdminDashboard({
                 </div>
               );
             })}
-          </div>
-        )}
+        </div>
       </div>
 
       {editing && (
         <Layer>
           <ShowEditor
-          key={editing === 'new' ? 'new' : editing.slug}
-          show={editing === 'new' ? undefined : editing}
+          key={typeof editing === 'string' ? editing : editing.slug}
+          show={typeof editing === 'string' ? undefined : editing}
+          past={editing === 'new-past'}
           canTranslate={canTranslate}
           translate={translate}
           onClose={() => setEditing(null)}
@@ -398,6 +403,7 @@ const SAVE_ERRORS: Record<string, L> = {
 
 function ShowEditor({
   show,
+  past,
   canTranslate,
   translate,
   onClose,
@@ -405,6 +411,8 @@ function ShowEditor({
   onError,
 }: {
   show?: Show;
+  /** new show meant for History: start with a past date */
+  past?: boolean;
   canTranslate: boolean;
   translate: Translate;
   onClose: () => void;
@@ -412,7 +420,7 @@ function ShowEditor({
   onError: (msg: string) => void;
 }) {
   const { t, lang } = useLang();
-  const initial = useMemo(() => toDraft(show), [show]);
+  const initial = useMemo(() => toDraft(show, past), [show, past]);
   const [d, setD] = useState<Draft>(initial);
   const [busy, setBusy] = useState<'save' | 'delete' | 'translate' | null>(null);
   const [error, setError] = useState<string | null>(null);

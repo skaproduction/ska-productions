@@ -4,7 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CONTACT_EMAIL, SOCIALS } from './data';
+import BgmPlayer from './BgmPlayer';
+import { CONTACT_EMAIL, SOCIALS, type SiteSettings } from './data';
 import MobileDock from './MobileDock';
 import { Arrow, LangProvider, Magnetic, SocialIcon, useLang } from './ui';
 
@@ -16,7 +17,7 @@ const NAV = [
   { href: '/#about', label: { en: 'About', ko: '회사 소개' } },
 ];
 
-export default function Shell({ children }: { children: ReactNode }) {
+export default function Shell({ children, bgm }: { children: ReactNode; bgm?: SiteSettings['bgm'] }) {
   const root = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const isAdmin = usePathname().startsWith('/admin');
@@ -56,6 +57,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         {children}
         <Footer />
         <MobileDock />
+        <BgmPlayer bgm={bgm} />
       </div>
     </LangProvider>
   );

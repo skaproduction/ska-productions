@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Anton, Noto_Serif } from 'next/font/google';
 import Shell from '@/components/ska/Shell';
+import { getSettings } from '@/lib/ska-store';
 import './globals.css';
 import './ska.css';
 
@@ -24,7 +25,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // background music is optional; a storage hiccup must never take the page down
+  const bgm = await getSettings()
+    .then((s) => s.bgm)
+    .catch(() => undefined);
   return (
     <html lang="ko" className="h-full antialiased">
       <head>
@@ -36,7 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full bg-[#07070a] font-sans text-zinc-100">
         <div className={`${display.variable} ${serif.variable} ska`}>
           <script dangerouslySetInnerHTML={{ __html: introScript }} />
-          <Shell>{children}</Shell>
+          <Shell bgm={bgm}>{children}</Shell>
         </div>
       </body>
     </html>

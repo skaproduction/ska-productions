@@ -1,9 +1,11 @@
 'use client';
 
+import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, brandById, isPast, type Artist, type BrandId, type L, type Photo, type Show, type Zone } from './data';
+import { BRANDS, ZONES, brandById, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from './data';
+import MusicSettings from './MusicSettings';
 import SeatMapEditor from './SeatMapEditor';
 import { Arrow, Layer, Poster, fmtDate, useLang } from './ui';
 
@@ -72,17 +74,42 @@ export function AdminLogin({ configured }: { configured: boolean }) {
 
 /* ================= helpers ================= */
 
-async function uploadImage(file: File, prefix: string): Promise<string> {
-  if (!ACCEPT.split(',').includes(file.type)) throw new Error('type');
-  if (file.size > MAX_MB * 1024 * 1024) throw new Error('size');
+const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a' };
+
+// On Vercel files go from the browser straight to Blob (function requests are capped at 4.5 MB);
+// locally they're posted to the dev server, which stores them on disk.
+let directUploads = false;
+
+async function uploadMedia(file: File, prefix: string, onProgress?: (pct: number) => void): Promise<string> {
+  const type = file.type || (/\.m4a$/i.test(file.name) ? 'audio/mp4' : /\.mp3$/i.test(file.name) ? 'audio/mpeg' : '');
+  const ext = EXT[type];
+  if (!ext) throw new Error('type');
+  if (file.size > (type.startsWith('audio/') ? 15 : MAX_MB) * 1024 * 1024) throw new Error('size');
+  if (directUploads) {
+    const safe = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'file';
+    const name = `${safe}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const blob = await blobUpload(`ska/media/${name}`, file, {
+      access: 'public',
+      handleUploadUrl: '/api/ska/admin/upload',
+      contentType: type,
+      onUploadProgress: (p) => onProgress?.(p.percentage),
+    });
+    return blob.url;
+  }
   const body = new FormData();
   body.set('file', file);
   body.set('prefix', prefix);
   const res = await fetch('/api/ska/admin/media', { method: 'POST', body });
   const json = (await res.json().catch(() => ({}))) as { url?: string };
   if (!res.ok || !json.url) throw new Error('upload');
+  onProgress?.(100);
   return json.url;
 }
+
+const uploadImage = (file: File, prefix: string) => {
+  if (!ACCEPT.split(',').includes(file.type)) return Promise.reject(new Error('type'));
+  return uploadMedia(file, prefix);
+};
 
 type Translate = (texts: string[]) => Promise<string[] | null>;
 
@@ -183,7 +210,18 @@ const fromDraft = (d: Draft) => ({
 
 /* ================= dashboard ================= */
 
-export function AdminDashboard({ shows, canTranslate }: { shows: Show[]; canTranslate: boolean }) {
+export function AdminDashboard({
+  shows,
+  settings,
+  canTranslate,
+  blobUploads,
+}: {
+  shows: Show[];
+  settings: SiteSettings;
+  canTranslate: boolean;
+  blobUploads: boolean;
+}) {
+  directUploads = blobUploads;
   const { t, lang } = useLang();
   const router = useRouter();
   const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
@@ -241,6 +279,8 @@ export function AdminDashboard({ shows, canTranslate }: { shows: Show[]; canTran
             </button>
           </div>
         </div>
+
+        <MusicSettings settings={settings} upload={uploadMedia} onToast={setToast} />
 
         <div className="mt-12 flex gap-1 border-b border-white/10">
           {(

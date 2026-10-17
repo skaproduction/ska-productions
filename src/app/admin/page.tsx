@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { AdminDashboard, AdminLogin } from '@/components/ska/Admin';
 import { adminConfigured, isAdmin } from '@/lib/ska-auth';
-import { getShows } from '@/lib/ska-store';
+import { getSettings, getShows, usesBlobStorage } from '@/lib/ska-store';
 import { translateConfigured } from '@/lib/ska-translate';
 
 export const metadata: Metadata = {
@@ -11,5 +11,6 @@ export const metadata: Metadata = {
 
 export default async function AdminPage() {
   if (!(await isAdmin())) return <AdminLogin configured={adminConfigured()} />;
-  return <AdminDashboard shows={await getShows({ fresh: true })} canTranslate={translateConfigured()} />;
+  const [shows, settings] = await Promise.all([getShows({ fresh: true }), getSettings({ fresh: true })]);
+  return <AdminDashboard shows={shows} settings={settings} canTranslate={translateConfigured()} blobUploads={usesBlobStorage()} />;
 }

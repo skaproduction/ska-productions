@@ -4,56 +4,70 @@ import { revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type Zone } from '@/components/ska/data';
+import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from '@/components/ska/data';
 
 // Two storage backends behind one API:
 // - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). The show list is one public
 //   JSON blob. Reads ask the Blob API for its current etag and fetch the file with that etag in the
 //   URL, so the CDN can't hand back an older copy; public pages also keep the result in Next's data
 //   cache (tag `ska-shows`), which every save expires at once. Every save also writes a timestamped
-//   backup. Images are public blobs served straight from the Blob CDN.
+//   backup. Images and audio are public blobs served straight from the Blob CDN; the admin uploads
+//   them from the browser straight to Blob (see /api/ska/admin/upload), which avoids the 4.5 MB
+//   request limit of Vercel functions. Site settings (background music) work like the show list.
 // - Local disk under /data/ska otherwise (development on this PC). Images are served by
 //   /api/ska/media/[file].
 
 const ROOT = path.join(process.cwd(), 'data', 'ska');
 const MEDIA = path.join(ROOT, 'media');
 const SHOWS_FILE = path.join(ROOT, 'shows.json');
+const SETTINGS_FILE = path.join(ROOT, 'settings.json');
 const BACKUPS = path.join(ROOT, 'backups');
 const KEEP_BACKUPS = 30;
 
 export const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+export const AUDIO_TYPES: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a' };
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const MEDIA_FILE_RE = /^[a-z0-9-]+\.(jpg|png|webp)$/;
+export const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
+export const MEDIA_FILE_RE = /^[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
+/** Blob pathname a browser upload may write to (checked before issuing an upload token). */
+export const BLOB_UPLOAD_PATH_RE = /^ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
 const MEDIA_PREFIX = '/api/ska/media/';
-const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ska\/media\/[a-z0-9-]+\.(jpg|png|webp)$/;
+const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
 const BLOB_SHOWS = 'ska/data/shows.json';
+const BLOB_SETTINGS = 'ska/data/settings.json';
 const BLOB_BACKUPS = 'ska/backups/';
 
 const SHOWS_TAG = 'ska-shows';
+const SETTINGS_TAG = 'ska-settings';
 
 const useBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+/** True on Vercel (Blob storage); false in local dev (disk). */
+export const usesBlobStorage = useBlob;
 
-/* ---------- shows ---------- */
-
-async function readShows(): Promise<Show[] | null> {
+/** Reads a JSON document from Blob (current etag, so never a stale CDN copy) or from disk. */
+async function readJson<T>(blobPath: string, diskPath: string): Promise<T | null> {
   if (useBlob()) {
     let meta;
     try {
-      meta = await head(BLOB_SHOWS);
+      meta = await head(blobPath);
     } catch (e) {
       if (e instanceof BlobNotFoundError) return null;
       throw e;
     }
     const res = await fetch(`${meta.url}?v=${encodeURIComponent(meta.etag || String(meta.uploadedAt.getTime()))}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`Reading ${BLOB_SHOWS} failed: ${res.status}`);
-    return (await res.json()) as Show[];
+    if (!res.ok) throw new Error(`Reading ${blobPath} failed: ${res.status}`);
+    return (await res.json()) as T;
   }
   try {
-    return JSON.parse(await readFile(SHOWS_FILE, 'utf8')) as Show[];
+    return JSON.parse(await readFile(diskPath, 'utf8')) as T;
   } catch {
     return null;
   }
 }
+
+/* ---------- shows ---------- */
+
+const readShows = () => readJson<Show[]>(BLOB_SHOWS, SHOWS_FILE);
 
 const readShowsCached = unstable_cache(async () => (await readShows()) ?? DEFAULT_SHOWS, ['ska-shows'], {
   tags: [SHOWS_TAG],
@@ -236,12 +250,53 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
   };
 }
 
-/* ---------- images ---------- */
+/* ---------- site settings ---------- */
+
+const readSettingsCached = unstable_cache(async () => (await readJson<SiteSettings>(BLOB_SETTINGS, SETTINGS_FILE)) ?? {}, ['ska-settings'], {
+  tags: [SETTINGS_TAG],
+  revalidate: 3600,
+});
+
+export async function getSettings({ fresh = false } = {}): Promise<SiteSettings> {
+  if (useBlob() && !fresh) return structuredClone(await readSettingsCached());
+  return (await readJson<SiteSettings>(BLOB_SETTINGS, SETTINGS_FILE)) ?? {};
+}
+
+export function saveSettings(raw: unknown) {
+  return locked(async () => {
+    const prev = await getSettings({ fresh: true });
+    const r = (raw ?? {}) as { bgm?: Record<string, unknown> | null };
+    const url = media(r.bgm?.url);
+    const vol = Number(r.bgm?.volume);
+    const next: SiteSettings = {
+      bgm: url
+        ? {
+            url,
+            title: str(r.bgm?.title, 80, 'title') || undefined,
+            volume: Number.isFinite(vol) ? Math.min(0.8, Math.max(0.05, Math.round(vol * 100) / 100)) : 0.25,
+            enabled: r.bgm?.enabled !== false,
+          }
+        : undefined,
+    };
+    const json = JSON.stringify(next, null, 2);
+    if (useBlob()) {
+      await put(BLOB_SETTINGS, json, { access: 'public', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 });
+      revalidateTag(SETTINGS_TAG, { expire: 0 });
+    } else {
+      await mkdir(ROOT, { recursive: true });
+      await writeFile(SETTINGS_FILE, json);
+    }
+    if (prev.bgm?.url && prev.bgm.url !== next.bgm?.url) await deleteImage(prev.bgm.url);
+    return next;
+  });
+}
+
+/* ---------- images & audio ---------- */
 
 export async function saveImage(file: File, prefix: string) {
-  const ext = IMAGE_TYPES[file.type];
+  const ext = IMAGE_TYPES[file.type] ?? AUDIO_TYPES[file.type];
   if (!ext) throw new InvalidShow('unsupported_type');
-  if (file.size > MAX_IMAGE_BYTES) throw new InvalidShow('too_large');
+  if (file.size > (AUDIO_TYPES[file.type] ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES)) throw new InvalidShow('too_large');
   const safe = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'img';
   const name = `${safe}-${Date.now()}-${randomBytes(3).toString('hex')}.${ext}`;
   if (useBlob()) {

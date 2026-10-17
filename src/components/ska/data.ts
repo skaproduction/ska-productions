@@ -225,6 +225,12 @@ export const STATS = [
   { value: 24, suffix: '/7', label: { en: 'Booking desk', ko: '부킹 데스크' } },
 ];
 
+/** Site-wide options edited in the admin. */
+export type SiteSettings = {
+  /** Background music: starts softly when a visitor enters through the intro; visitors can toggle it. */
+  bgm?: { url: string; title?: string; volume: number; enabled: boolean };
+};
+
 export const CONTACT_EMAIL = 'booking@skaproductions.com';
 
 export const SOCIALS = [

@@ -17,6 +17,11 @@ export default function Intro() {
   const enter = useCallback(() => {
     setPhase((p) => (p === 'play' || p === 'ready' ? 'exit' : p));
   }, []);
+  // a click or key press is a user gesture, so background music may start with it
+  const enterByUser = useCallback(() => {
+    window.dispatchEvent(new Event('ska:enter'));
+    enter();
+  }, [enter]);
 
   // Layout effect so a client-side navigation back to the home page never paints the overlay.
   useLayoutEffect(() => {
@@ -32,7 +37,8 @@ export default function Intro() {
     const ready = setTimeout(() => setPhase((p) => (p === 'play' ? 'ready' : p)), 2300);
     const auto = setTimeout(enter, 5200);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') enter();
+      if (e.key === 'Enter' || e.key === ' ') enterByUser();
+      else if (e.key === 'Escape') enter();
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -40,7 +46,7 @@ export default function Intro() {
       clearTimeout(auto);
       window.removeEventListener('keydown', onKey);
     };
-  }, [enter]);
+  }, [enter, enterByUser]);
 
   useEffect(() => {
     if (phase !== 'exit') return;
@@ -58,7 +64,7 @@ export default function Intro() {
     <div
       className="ska-intro fixed inset-0 z-[100] flex cursor-pointer flex-col items-center justify-center bg-[#050507]"
       data-phase={phase}
-      onClick={enter}
+      onClick={enterByUser}
       role="button"
       tabIndex={0}
       aria-label="Enter SKA Productions"
@@ -80,7 +86,7 @@ export default function Intro() {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          enter();
+          enterByUser();
         }}
         className="ska-intro-cta absolute bottom-[12vh] flex flex-col items-center gap-3 text-[11px] uppercase tracking-[0.5em] text-white/60 transition hover:text-white"
       >

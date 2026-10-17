@@ -7,11 +7,12 @@ import path from 'node:path';
 import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Track, type Zone } from '@/components/ska/data';
 
 // Two storage backends behind one API:
-// - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). The show list is one public
-//   JSON blob. Reads ask the Blob API for its current etag and fetch the file with that etag in the
-//   URL, so the CDN can't hand back an older copy; public pages also keep the result in Next's data
-//   cache (tag `ska-shows`), which every save expires at once. Every save also writes a timestamped
-//   backup. Images and audio are public blobs served straight from the Blob CDN; the admin uploads
+// - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). Every save writes the whole
+//   show list as a new, never-overwritten JSON blob (ska/data/shows/<time>.json); reads list that
+//   folder through the Blob API and fetch the newest. Overwriting one fixed file doesn't work: the
+//   Blob CDN ignores query strings and serves the old copy for up to a minute, which made saves look
+//   lost and let the next save build on stale data. The last 30 versions are kept as backups. Public
+//   pages keep the result in Next's data cache (tag `ska-shows`), which every save expires at once. Images and audio are public blobs served straight from the Blob CDN; the admin uploads
 //   them from the browser straight to Blob (see /api/ska/admin/upload), which avoids the 4.5 MB
 //   request limit of Vercel functions. Site settings (background music) work like the show list.
 // - Local disk under /data/ska otherwise (development on this PC). Images are served by
@@ -33,9 +34,10 @@ export const MEDIA_FILE_RE = /^[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
 export const BLOB_UPLOAD_PATH_RE = /^ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
 const MEDIA_PREFIX = '/api/ska/media/';
 const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
-const BLOB_SHOWS = 'ska/data/shows.json';
-const BLOB_SETTINGS = 'ska/data/settings.json';
-const BLOB_BACKUPS = 'ska/backups/';
+// versioned folders; the single files are where data lived before versioning (read as a fallback)
+const BLOB_SHOWS = 'ska/data/shows/';
+const BLOB_SETTINGS = 'ska/data/settings/';
+const LEGACY: Record<string, string> = { [BLOB_SHOWS]: 'ska/data/shows.json', [BLOB_SETTINGS]: 'ska/data/settings.json' };
 
 const SHOWS_TAG = 'ska-shows';
 const SETTINGS_TAG = 'ska-settings';
@@ -44,18 +46,34 @@ const useBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 /** True on Vercel (Blob storage); false in local dev (disk). */
 export const usesBlobStorage = useBlob;
 
-/** Reads a JSON document from Blob (current etag, so never a stale CDN copy) or from disk. */
-async function readJson<T>(blobPath: string, diskPath: string): Promise<T | null> {
+/** All versions in a Blob folder, oldest first (names start with a sortable timestamp). */
+async function versions(folder: string) {
+  const out = [];
+  let cursor: string | undefined;
+  do {
+    const page = await list({ prefix: folder, cursor, limit: 1000 });
+    out.push(...page.blobs);
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  return out.sort((a, b) => a.pathname.localeCompare(b.pathname));
+}
+
+/** Reads the newest version of a JSON document from Blob, or the file on disk. */
+async function readJson<T>(folder: string, diskPath: string): Promise<T | null> {
   if (useBlob()) {
-    let meta;
-    try {
-      meta = await head(blobPath);
-    } catch (e) {
-      if (e instanceof BlobNotFoundError) return null;
-      throw e;
+    const latest = (await versions(folder)).at(-1);
+    // before versioning, every show save also wrote a uniquely named backup: the newest one is current
+    let url = latest?.url ?? (folder === BLOB_SHOWS ? (await versions('ska/backups/shows-')).at(-1)?.url : undefined);
+    if (!url) {
+      try {
+        url = (await head(LEGACY[folder])).url;
+      } catch (e) {
+        if (e instanceof BlobNotFoundError) return null;
+        throw e;
+      }
     }
-    const res = await fetch(`${meta.url}?v=${encodeURIComponent(meta.etag || String(meta.uploadedAt.getTime()))}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`Reading ${blobPath} failed: ${res.status}`);
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Reading ${folder} failed: ${res.status}`);
     return (await res.json()) as T;
   }
   try {
@@ -63,6 +81,19 @@ async function readJson<T>(blobPath: string, diskPath: string): Promise<T | null
   } catch {
     return null;
   }
+}
+
+/** Saves a new version (unique name, so no CDN copy can be stale) and prunes old ones. */
+async function writeJsonBlob(folder: string, json: string) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  await put(`${folder}${stamp}-${randomBytes(3).toString('hex')}.json`, json, {
+    access: 'public',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    cacheControlMaxAge: 60 * 60 * 24 * 365,
+  });
+  const old = (await versions(folder)).slice(0, -KEEP_BACKUPS);
+  if (old.length) await del(old.map((b) => b.url));
 }
 
 /* ---------- shows ---------- */
@@ -96,15 +127,9 @@ async function writeShows(shows: Show[]) {
   const json = JSON.stringify(shows, null, 2);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   if (useBlob()) {
-    const opts = { access: 'public', contentType: 'application/json', addRandomSuffix: false } as const;
-    // short CDN lifetime: reads already add the etag to the URL, this just limits stale copies further
-    await put(BLOB_SHOWS, json, { ...opts, allowOverwrite: true, cacheControlMaxAge: 60 });
+    // each version doubles as a backup, so a bad edit can be undone
+    await writeJsonBlob(BLOB_SHOWS, json);
     revalidateTag(SHOWS_TAG, { expire: 0 });
-    // every save also lands in ska/backups/ so a bad edit can be undone
-    await put(`${BLOB_BACKUPS}shows-${stamp}.json`, json, opts);
-    const { blobs } = await list({ prefix: BLOB_BACKUPS, limit: 1000 });
-    const old = blobs.map((b) => b.pathname).sort().slice(0, -KEEP_BACKUPS);
-    if (old.length) await del(old);
     return;
   }
   await mkdir(BACKUPS, { recursive: true });
@@ -299,7 +324,7 @@ export function saveSettings(raw: unknown) {
     };
     const json = JSON.stringify(next, null, 2);
     if (useBlob()) {
-      await put(BLOB_SETTINGS, json, { access: 'public', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 });
+      await writeJsonBlob(BLOB_SETTINGS, json);
       revalidateTag(SETTINGS_TAG, { expire: 0 });
     } else {
       await mkdir(ROOT, { recursive: true });

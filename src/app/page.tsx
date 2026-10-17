@@ -20,7 +20,7 @@ export default async function SkaHome() {
       <Intro />
       <main>
         <Hero />
-        <Brands shows={upcoming} />
+        <Brands shows={upcoming} past={past} />
         <Upcoming shows={upcoming} />
         <Casting />
         <History shows={past} />

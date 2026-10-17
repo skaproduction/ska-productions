@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import PastReel from './PastReel';
 import { SERIES as BRANDS, type Brand, type Show } from './data';
 import { Arrow, Reveal, SwipeDots, useLang, useSnapIndex } from './ui';
 
@@ -9,9 +10,10 @@ export function focusShows(id: Brand['id'] | 'all') {
   document.getElementById('upcoming')?.scrollIntoView({ behavior: 'smooth' });
 }
 
-export default function Brands({ shows }: { shows: Show[] }) {
+export default function Brands({ shows, past = [] }: { shows: Show[]; past?: Show[] }) {
   const { t } = useLang();
   const [active, setActive] = useState(0);
+  const [reel, setReel] = useState<Brand | null>(null);
   // on phones the panels are a swipe row; the card in the middle is the "active" one
   const row = useSnapIndex<HTMLDivElement>();
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function Brands({ shows }: { shows: Show[] }) {
           {BRANDS.map((b, i) => {
             const on = i === active;
             const count = shows.filter((s) => s.brand === b.id).length;
+            const pastCount = past.filter((s) => s.brand === b.id).length;
             return (
               <div
                 key={b.id}
@@ -115,20 +118,32 @@ export default function Brands({ shows }: { shows: Show[] }) {
                     </div>
                     <div>
                       <p className="text-sm leading-relaxed text-white/60">{t(b.blurb)}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (count) focusShows(b.id);
-                          else document.getElementById('history')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="mt-5 inline-flex items-center gap-2 text-sm font-semibold transition hover:gap-3"
-                        style={{ color: b.accent }}
-                      >
-                        {count
-                          ? t({ en: `See ${count} upcoming show${count === 1 ? '' : 's'}`, ko: `예정 공연 ${count}개 보기` })
-                          : t({ en: 'See past shows', ko: '지난 공연 보기' })}{' '}
-                        <Arrow />
-                      </button>
+                      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+                        {count > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusShows(b.id);
+                            }}
+                            className="inline-flex items-center gap-2 text-sm font-semibold transition hover:gap-3"
+                            style={{ color: b.accent }}
+                          >
+                            {t({ en: `See ${count} upcoming show${count === 1 ? '' : 's'}`, ko: `예정 공연 ${count}개 보기` })} <Arrow />
+                          </button>
+                        )}
+                        {pastCount > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReel(b);
+                            }}
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-white/75 transition hover:text-white"
+                          >
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 text-[10px]">▶</span>
+                            {t({ en: `See past shows (${pastCount})`, ko: `지난 공연 보기 (${pastCount})` })}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -138,6 +153,7 @@ export default function Brands({ shows }: { shows: Show[] }) {
           </div>
           <SwipeDots count={BRANDS.length} index={row.index} onPick={row.go} colors={BRANDS.map((b) => b.accent)} />
         </Reveal>
+        {reel && <PastReel brand={reel} shows={past.filter((s) => s.brand === reel.id)} onClose={() => setReel(null)} />}
       </div>
     </section>
   );

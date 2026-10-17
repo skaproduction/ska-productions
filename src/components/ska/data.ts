@@ -51,10 +51,10 @@ export const BRANDS: Brand[] = [
     name: 'SKA SUPER SWAG FESTIVAL',
     short: 'SSS',
     genre: { en: 'Hip-Hop Festival', ko: '힙합 페스티벌' },
-    tagline: { en: 'Korean hip-hop, turned all the way up.', ko: '한국 힙합, 볼륨 끝까지.' },
+    tagline: { en: 'Ten years of real Korean hip-hop.', ko: '정통 한국 힙합, 10년의 무대.' },
     blurb: {
-      en: 'SKA’s own hip-hop festival — headliners, rising MCs and DJ sets across multiple stages, with the energy of a block party.',
-      ko: 'SKA의 오리지널 힙합 페스티벌. 헤드라이너, 라이징 MC, DJ 셋이 여러 스테이지에서 블록파티의 에너지로 펼쳐집니다.',
+      en: 'Korea’s authentic hip-hop festival, celebrating its 10th anniversary in 2026 — a decade of headliners, rising MCs and DJ sets, all with the energy of a block party.',
+      ko: '2026년 10주년을 맞는 정통 힙합 페스티벌. 10년 동안 이어온 헤드라이너와 라이징 MC, DJ 셋의 무대를 블록파티의 에너지로 펼칩니다.',
     },
     accent: '#c6ff00',
     accent2: '#ffd400',

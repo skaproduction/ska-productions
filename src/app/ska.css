@@ -480,6 +480,43 @@ html:has(.ska) {
   }
 }
 
+/* past-show reel: posters drop into one pile in the middle, then fan out and keep floating */
+.ska-fan {
+  transform: translateY(var(--lift, 0)) rotate(var(--rot, 0deg));
+  animation: ska-fan 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ska-fan {
+  0% {
+    transform: translate(var(--dx, 0), 120px) perspective(900px) rotateX(35deg) rotate(0deg) scale(0.7);
+    opacity: 0;
+  }
+  22% {
+    transform: translate(var(--dx, 0), 0) perspective(900px) rotateX(0deg) rotate(calc(var(--rot, 0deg) * 0.4)) scale(0.86);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(var(--lift, 0)) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+}
+.ska-float {
+  animation: ska-float 4.2s ease-in-out infinite alternate;
+}
+@keyframes ska-float {
+  from {
+    transform: translateY(-7px);
+  }
+  to {
+    transform: translateY(7px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ska-fan,
+  .ska-float {
+    animation: none;
+  }
+}
+
 /* no focus box after a mouse/touch click; keyboard users still get a visible ring */
 .ska :is(button, a, [role='tab']):focus:not(:focus-visible) {
   outline: none;

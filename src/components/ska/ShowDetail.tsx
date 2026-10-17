@@ -293,7 +293,7 @@ function Lineup({ show, brand, past }: { show: Show; brand: Brand; past: boolean
                   <span className="relative text-[10px] uppercase tracking-[0.25em]" style={{ color: brand.accent }}>
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className="ska-display relative text-2xl normal-case leading-tight">{a.name || 'Artist TBA'}</span>
+                  <span className="ska-display relative text-2xl leading-tight" style={{ textTransform: 'none' }}>{a.name || 'Artist TBA'}</span>
                 </div>
               </div>
             </button>

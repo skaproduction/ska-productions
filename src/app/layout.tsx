@@ -21,8 +21,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'SKA PRODUCTIONS INC.',
     description: 'KPOP PRIME · 7 ROCK PRIME · SKA SUPER SWAG FESTIVAL — and Korean artist casting for stages worldwide.',
-    images: ['/ska/logo-full.png'],
+    images: [{ url: '/ska/og.png', width: 1200, height: 630, alt: 'SKA PRODUCTIONS INC.' }],
+    siteName: 'SKA PRODUCTIONS INC.',
+    url: '/',
+    type: 'website',
   },
+  twitter: { card: 'summary_large_image', images: ['/ska/og.png'] },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

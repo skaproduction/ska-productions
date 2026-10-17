@@ -55,7 +55,7 @@ type Form = {
   country: string;
   city: string;
   date: string;
-  artists: string;
+  artists: string[];
   name: string;
   company: string;
   email: string;
@@ -69,7 +69,7 @@ const EMPTY: Form = {
   country: '',
   city: '',
   date: '',
-  artists: '',
+  artists: [],
   name: '',
   company: '',
   email: '',
@@ -175,12 +175,9 @@ export default function Casting() {
                           );
                         })}
                       </div>
-                      <input
-                        className="ska-input mt-4"
-                        placeholder={t({ en: 'Specific artists in mind? (optional)', ko: '원하는 특정 아티스트가 있다면 (선택)' })}
-                        value={f.artists}
-                        onChange={(e) => set('artists', e.target.value)}
-                      />
+                      <p className="mt-4 text-xs text-white/40">
+                        {t({ en: 'Have specific artists in mind? You can list them in the last step.', ko: '원하는 특정 아티스트가 있다면 마지막 단계에서 목록으로 적을 수 있어요.' })}
+                      </p>
                     </Q>
                   )}
 
@@ -308,6 +305,10 @@ export default function Casting() {
                         <Field label={t({ en: 'Email *', ko: '이메일 *' })} className="sm:col-span-2">
                           <input type="email" className="ska-input" value={f.email} onChange={(e) => set('email', e.target.value)} autoComplete="email" />
                         </Field>
+                        <div className="sm:col-span-2">
+                          <span className="mb-2 block text-xs text-white/50">{t({ en: 'Artist wish list (optional)', ko: '원하는 아티스트 목록 (선택)' })}</span>
+                          <WishList value={f.artists} onChange={(v) => set('artists', v)} />
+                        </div>
                         <Field label={t({ en: 'Anything else?', ko: '추가 내용' })} className="sm:col-span-2">
                           <textarea rows={3} className="ska-input resize-none" value={f.message} onChange={(e) => set('message', e.target.value)} />
                         </Field>
@@ -367,7 +368,16 @@ export default function Casting() {
                     ))}
                   </div>
                 ) : null}
-                {f.artists && <p className="mt-2 text-white/60">“{f.artists}”</p>}
+                {f.artists.length > 0 && (
+                  <ol className="mt-2 space-y-1 text-white/80">
+                    {f.artists.map((a, i) => (
+                      <li key={a} className="flex gap-2">
+                        <span className="w-4 shrink-0 text-right font-mono text-xs leading-5 text-white/35">{i + 1}</span>
+                        {a}
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </Row>
               <Row k={t({ en: 'Event', ko: '행사' })}>{f.event ? t(labelOf(EVENTS, f.event)!) : null}</Row>
               <Row k={t({ en: 'Audience', ko: '규모' })}>
@@ -387,6 +397,102 @@ export default function Casting() {
         </Reveal>
       </div>
     </section>
+  );
+}
+
+const MAX_WISHES = 20;
+
+/** Artist names as numbered chips; order is priority. Enter, comma or Add commits; pasting a list splits it. */
+function WishList({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const { t } = useLang();
+  const [draft, setDraft] = useState('');
+
+  const add = (text: string) => {
+    const names = text
+      .split(/[,\n]/)
+      .map((s) => s.trim().slice(0, 60))
+      .filter(Boolean);
+    const next = [...value];
+    for (const n of names) if (!next.some((x) => x.toLowerCase() === n.toLowerCase()) && next.length < MAX_WISHES) next.push(n);
+    onChange(next);
+    setDraft('');
+  };
+  const move = (i: number, d: -1 | 1) => {
+    const j = i + d;
+    if (j < 0 || j >= value.length) return;
+    const next = [...value];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div className="rounded-xl border border-white/[0.09] bg-white/[0.03] p-2 focus-within:border-white/50">
+      {value.length > 0 && (
+        <ol className="flex flex-wrap gap-1.5 p-1">
+          {value.map((a, i) => (
+            <li key={a} className="group flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] py-1 pl-1 pr-2 text-sm">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black">{i + 1}</span>
+              {a}
+              <span className="ml-0.5 flex items-center opacity-60 transition group-hover:opacity-100">
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-0.5 text-xs disabled:opacity-20" aria-label={t({ en: 'Move up', ko: '앞으로' })}>
+                  ‹
+                </button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === value.length - 1} className="px-0.5 text-xs disabled:opacity-20" aria-label={t({ en: 'Move down', ko: '뒤로' })}>
+                  ›
+                </button>
+                <button type="button" onClick={() => onChange(value.filter((x) => x !== a))} className="pl-1 text-white/60 hover:text-red-300" aria-label={t({ en: 'Remove', ko: '삭제' })}>
+                  ✕
+                </button>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          className="min-w-0 flex-1 bg-transparent px-2 py-2 text-[15px] text-white outline-none placeholder:text-white/30"
+          value={draft}
+          disabled={value.length >= MAX_WISHES}
+          placeholder={
+            value.length >= MAX_WISHES
+              ? t({ en: 'List is full', ko: '목록이 가득 찼어요' })
+              : t({ en: 'Type an artist and press Enter (e.g. EXO, Jay Park)', ko: '아티스트 이름 입력 후 Enter (예: EXO, 박재범)' })
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.includes(',')) add(v);
+            else setDraft(v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              if (draft.trim()) add(draft);
+            } else if (e.key === 'Backspace' && !draft && value.length) {
+              onChange(value.slice(0, -1));
+            }
+          }}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text');
+            if (/[,\n]/.test(text)) {
+              e.preventDefault();
+              add(draft + text);
+            }
+          }}
+          onBlur={() => draft.trim() && add(draft)}
+        />
+        <button
+          type="button"
+          onClick={() => draft.trim() && add(draft)}
+          disabled={!draft.trim()}
+          className="shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:border-white disabled:opacity-30"
+        >
+          + {t({ en: 'Add', ko: '추가' })}
+        </button>
+      </div>
+      {value.length > 1 && (
+        <p className="px-2 pb-1 pt-1 text-[11px] text-white/35">{t({ en: 'Numbers show your order of preference.', ko: '숫자는 선호 순서입니다.' })}</p>
+      )}
+    </div>
   );
 }
 

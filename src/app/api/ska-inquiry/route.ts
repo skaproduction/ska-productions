@@ -9,7 +9,7 @@ type Inquiry = {
   country?: string;
   city?: string;
   date?: string;
-  artists?: string;
+  artists?: string[] | string;
   name?: string;
   company?: string;
   email?: string;
@@ -28,10 +28,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'missing_contact' }, { status: 400 });
   }
 
+  const wishes = (Array.isArray(body.artists) ? body.artists : body.artists ? [body.artists] : [])
+    .map((a) => String(a).trim().slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 20);
+
   const summary = [
     '🎤 SKA casting inquiry',
     `From: ${body.name}${body.company ? ` (${body.company})` : ''} <${body.email}>`,
-    `Artists: ${(body.genres ?? []).join(', ')}${body.artists ? ` — "${body.artists}"` : ''}`,
+    `Artists: ${(body.genres ?? []).join(', ')}`,
+    wishes.length ? `Wish list: ${wishes.map((a, i) => `${i + 1}. ${a}`).join('  ')}` : '',
     `Event: ${body.event} · ${body.capacity?.toLocaleString()}+ pax`,
     `Where/when: ${[body.city, body.country].filter(Boolean).join(', ')} · ${body.date || 'TBD'}`,
     body.message ? `Note: ${body.message}` : '',

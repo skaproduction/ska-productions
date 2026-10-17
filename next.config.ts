@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '*.public.blob.vercel-storage.com', pathname: '/ska/media/**' }],
   },
   // Lets phones on the same Wi-Fi open the dev server at http://<this PC's IP>:3000.
-  allowedDevOrigins: ['172.30.1.42'],
+  allowedDevOrigins: ['172.30.1.42', '172.30.1.59'],
 };
 
 export default nextConfig;

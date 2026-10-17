@@ -16,8 +16,8 @@ const SECTIONS: { id: string; label: L }[] = [
 ];
 
 /**
- * Phone/tablet navigation: a floating pill at the bottom of the screen that names the section
- * you're in and opens a jump menu, so the long single page never needs scrolling back to the top.
+ * Floating navigation: on phones/tablets a pill at the bottom that names the section
+ * you're in and opens a jump menu; on desktop a slim rail on the right edge with a mark per section.
  */
 export default function MobileDock() {
   const { t, lang, setLang } = useLang();
@@ -66,7 +66,56 @@ export default function MobileDock() {
 
   return (
     <Layer>
-      {/* floating pill */}
+      {/* desktop: slim rail on the right edge; hover a mark to see its section */}
+      <nav
+        aria-label={t({ en: 'Sections', ko: '섹션' })}
+        className={`fixed right-5 top-1/2 z-[75] hidden -translate-y-1/2 flex-col items-end gap-2 transition-all duration-500 lg:flex ${
+          shown ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-6 opacity-0'
+        }`}
+      >
+        <Link
+          href="/#casting"
+          className="group mb-2 flex items-center gap-2 rounded-full border border-white/15 bg-[#111116]/85 py-1.5 pl-1.5 pr-1.5 shadow-[0_10px_30px_-10px_rgba(0,0,0,.9)] backdrop-blur-md transition-all hover:pr-4"
+        >
+          <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-white/20 to-white/5">
+            <Image src="/ska/logo-mark-chrome.png" alt="" width={285} height={380} className="h-6 w-auto" />
+          </span>
+          <span className="max-w-0 overflow-hidden whitespace-nowrap text-xs font-semibold transition-all duration-300 group-hover:max-w-40">
+            {t({ en: 'Book an Artist', ko: '캐스팅 문의' })}
+          </span>
+        </Link>
+        <ol className="group/rail flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-[#111116]/70 px-2 py-3 backdrop-blur-md transition-colors hover:bg-[#111116]/95">
+          {SECTIONS.map((s, i) => {
+            const on = s.id === current;
+            return (
+              <li key={s.id}>
+                <Link href={`/#${s.id}`} className="group flex items-center justify-end gap-3 py-1.5 pl-2" aria-current={on ? 'true' : undefined}>
+                  <span
+                    className={`whitespace-nowrap text-xs transition-all duration-300 ${
+                      on ? 'text-white' : 'text-white/60 group-hover:text-white'
+                    } max-w-0 translate-x-2 overflow-hidden opacity-0 group-hover/rail:max-w-48 group-hover/rail:translate-x-0 group-hover/rail:opacity-100`}
+                  >
+                    <span className="mr-1.5 font-mono text-[10px] text-white/40">{String(i + 1).padStart(2, '0')}</span>
+                    {t(s.label)}
+                  </span>
+                  <span
+                    className={`h-[3px] rounded-full transition-all duration-300 ${on ? 'w-7 bg-white' : 'w-3.5 bg-white/30 group-hover:w-5 group-hover:bg-white/70'}`}
+                  />
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="mt-2 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#111116]/85 text-white/70 backdrop-blur-md transition hover:border-white hover:text-white"
+          aria-label={t({ en: 'Back to top', ko: '맨 위로' })}
+        >
+          ↑
+        </button>
+      </nav>
+
+      {/* phones/tablets: floating pill */}
       <div
         className={`fixed inset-x-0 bottom-4 z-[75] flex justify-center px-4 transition-all duration-500 lg:hidden ${
           shown && !open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-24 opacity-0'

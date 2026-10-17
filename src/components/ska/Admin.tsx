@@ -178,7 +178,7 @@ function toDraft(show?: Show, past = false): Draft {
     brand: show.brand,
     title: show.title,
     edition: show.edition,
-    date,
+    date: show.dateTBA ? '' : date,
     time,
     tz: tz === 'Z' ? '+00:00' : tz,
     endDate: show.end?.match(ISO_RE)?.[1] ?? '',
@@ -195,13 +195,20 @@ function toDraft(show?: Show, past = false): Draft {
   };
 }
 
+const tbaYear = (edition: string) => {
+  const y = Number(edition.match(/20\d\d/)?.[0]);
+  return y || new Date().getFullYear() + 1;
+};
+
 const fromDraft = (d: Draft) => ({
   slug: d.slug || undefined,
   brand: d.brand,
   title: d.title,
   edition: d.edition,
-  start: `${d.date}T${d.time}:00${d.tz}`,
-  end: d.endDate && d.endDate !== d.date ? `${d.endDate}T23:00:00${d.tz}` : undefined,
+  // no date yet: keep the show in its year (from the edition, e.g. "2027") as "Date TBA"
+  start: d.date ? `${d.date}T${d.time}:00${d.tz}` : `${tbaYear(d.edition)}-12-31T${d.time}:00${d.tz}`,
+  end: d.date && d.endDate && d.endDate !== d.date ? `${d.endDate}T23:00:00${d.tz}` : undefined,
+  dateTBA: !d.date || undefined,
   city: d.city,
   country: d.country,
   venue: d.venue,
@@ -336,7 +343,7 @@ export function AdminDashboard({
                     <h2 className="ska-display mt-1 truncate text-xl leading-tight">
                       {s.title} <span className="text-white/40">{s.edition}</span>
                     </h2>
-                    <p className="mt-1 text-xs text-white/50">{fmtDate(s.start, lang, s.end)}</p>
+                    <p className="mt-1 text-xs text-white/50">{fmtDate(s.start, lang, s.end, s.dateTBA)}</p>
                     <p className="text-xs text-white/50">{[s.city[lang], s.country[lang]].filter(Boolean).join(', ')}</p>
                     <p className="mt-2 text-xs text-white/40">
                       {t({ en: 'Lineup', ko: '라인업' })} {s.lineup.length} · {t({ en: 'announced', ko: '공개' })} {announced}
@@ -563,8 +570,13 @@ function ShowEditor({
           {/* date */}
           <Group title={t({ en: 'Date', ko: '날짜' })}>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label={t({ en: 'Start date *', ko: '시작일 *' })}>
+              <Field label={t({ en: 'Start date', ko: '시작일' })}>
                 <input type="date" className="ska-input [color-scheme:dark]" value={d.date} onChange={(e) => set('date', e.target.value)} />
+                {!d.date && (
+                  <span className="mt-1.5 block text-[11px] text-amber-300/80">
+                    {t({ en: `Empty = “${tbaYear(d.edition)} · Date TBA”`, ko: `비워두면 “${tbaYear(d.edition)} · 날짜 추후 공개”로 저장` })}
+                  </span>
+                )}
               </Field>
               <Field label={t({ en: 'Show time', ko: '공연 시작 시간' })}>
                 <input type="time" className="ska-input [color-scheme:dark]" value={d.time} onChange={(e) => set('time', e.target.value)} />
@@ -696,7 +708,7 @@ function ShowEditor({
             <button type="button" onClick={close} className="ska-btn ska-btn-ghost !py-2.5 !text-sm">
               {t({ en: 'Cancel', ko: '취소' })}
             </button>
-            <button type="button" onClick={save} disabled={!!busy || !d.title.trim() || !d.date} className="ska-btn ska-btn-chrome !py-2.5 !text-sm disabled:opacity-40">
+            <button type="button" onClick={save} disabled={!!busy || !d.title.trim()} className="ska-btn ska-btn-chrome !py-2.5 !text-sm disabled:opacity-40">
               {busy === 'save' ? t({ en: 'Saving…', ko: '저장 중…' }) : t({ en: 'Save', ko: '저장' })}
             </button>
           </div>

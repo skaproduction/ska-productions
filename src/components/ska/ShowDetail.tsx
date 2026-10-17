@@ -60,7 +60,7 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
               <div className="mt-8 grid max-w-lg grid-cols-2 gap-6 border-t border-white/10 pt-6 text-sm">
                 <div>
                   <p className="text-white/40">{t({ en: 'Date', ko: '일정' })}</p>
-                  <p className="mt-1 text-lg">{fmtDate(show.start, lang, show.end)}</p>
+                  <p className="mt-1 text-lg">{fmtDate(show.start, lang, show.end, show.dateTBA)}</p>
                 </div>
                 <div>
                   <p className="text-white/40">{t({ en: 'Location', ko: '장소' })}</p>
@@ -78,7 +78,7 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
               ) : (
                 <>
                   <div className="mt-8">
-                    <Countdown to={show.start} size="lg" />
+                    <Countdown to={show.start} tba={show.dateTBA} size="lg" />
                   </div>
                   <Notify show={show} brand={b} />
                 </>

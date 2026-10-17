@@ -267,6 +267,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     brand,
     title: str(r.title, 60, 'title', true),
     edition: str(r.edition, 60, 'edition'),
+    ...(r.dateTBA === true && { dateTBA: true }),
     city: loc(r.city, 60, 'city'),
     country: loc(r.country, 60, 'country'),
     venue: loc(r.venue, 120, 'venue'),

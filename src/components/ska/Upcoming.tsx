@@ -94,14 +94,14 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
                           className="absolute left-4 top-12 rounded-full px-3 py-1 font-mono text-xs font-bold text-black"
                           style={{ background: b.accent, transform: 'translateZ(40px)' }}
                         >
-                          {dday(s.start, now)}
+                          {dday(s.start, now, s.dateTBA)}
                         </span>
                       </div>
                     </Tilt>
                     <div className="mt-5 flex items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em]" style={{ color: b.accent }}>
-                          {fmtDate(s.start, lang, s.end)}
+                          {fmtDate(s.start, lang, s.end, s.dateTBA)}
                         </p>
                         <h3 className="ska-display mt-2 text-3xl leading-none">
                           {s.title} <span className="text-white/40">{s.edition}</span>
@@ -115,7 +115,7 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
                       </span>
                     </div>
                     <div className="mt-4 opacity-80 transition group-hover:opacity-100">
-                      <Countdown to={s.start} />
+                      <Countdown to={s.start} tba={s.dateTBA} />
                     </div>
                   </Link>
                 </Reveal>
@@ -195,14 +195,14 @@ function Timeline({ shows }: { shows: Show[] }) {
           <Poster src={active.poster} brand={brandById(active.brand)} title={active.title} edition={active.edition} className="w-40" />
           <div>
             <p className="text-xs uppercase tracking-[0.2em]" style={{ color: brandById(active.brand).accent }}>
-              {fmtDate(active.start, lang, active.end)} · {t(active.city)}
+              {fmtDate(active.start, lang, active.end, active.dateTBA)} · {t(active.city)}
             </p>
             <h3 className="ska-display mt-2 text-4xl">
               {active.title} <span className="text-white/40">{active.edition}</span>
             </h3>
             <p className="mt-3 max-w-lg text-white/60">{t(active.summary)}</p>
             <div className="mt-5">
-              <Countdown to={active.start} />
+              <Countdown to={active.start} tba={active.dateTBA} />
             </div>
           </div>
           <Link href={`/shows/${active.slug}`} className="ska-btn ska-btn-chrome self-end">

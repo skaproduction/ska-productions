@@ -154,7 +154,7 @@ function Shelf({ shows }: { shows: Show[] }) {
                   )}
                   <div className="absolute inset-x-0 bottom-0 translate-y-3 bg-gradient-to-t from-black via-black/80 to-transparent p-4 pt-14 opacity-0 transition duration-500 group-hover:translate-y-0 group-hover:opacity-100">
                     <p className="text-[10px] uppercase tracking-[0.25em]" style={{ color: b.accent }}>
-                      {fmtDate(s.start, lang, s.end)}
+                      {fmtDate(s.start, lang, s.end, s.dateTBA)}
                     </p>
                     <p className="mt-1 text-xs text-white/70">
                       {t(s.venue) || t(s.city)}

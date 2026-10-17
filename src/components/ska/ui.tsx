@@ -170,9 +170,15 @@ export function useNow(interval = 1000) {
   return now;
 }
 
-export function Countdown({ to, size = 'sm' }: { to: string; size?: 'sm' | 'lg' }) {
+export function Countdown({ to, size = 'sm', tba }: { to: string; size?: 'sm' | 'lg'; tba?: boolean }) {
   const now = useNow();
   const { t } = useLang();
+  if (tba)
+    return (
+      <p className={`inline-flex rounded-lg border border-white/10 bg-black/40 uppercase tracking-[0.2em] text-white/60 ${size === 'lg' ? 'px-5 py-4 text-sm' : 'px-3 py-2 text-[11px]'}`}>
+        {t({ en: 'Date to be announced', ko: '날짜 추후 공개' })}
+      </p>
+    );
   const diff = now === null ? null : Math.max(0, new Date(to).getTime() - now);
   const parts = [
     { v: diff === null ? null : Math.floor(diff / 864e5), l: { en: 'Days', ko: '일' } },
@@ -202,7 +208,8 @@ export function Countdown({ to, size = 'sm' }: { to: string; size?: 'sm' | 'lg' 
   );
 }
 
-export function dday(iso: string, now: number | null) {
+export function dday(iso: string, now: number | null, tba?: boolean) {
+  if (tba) return 'TBA';
   if (now === null) return 'D-··';
   const d = Math.ceil((new Date(iso).getTime() - now) / 864e5);
   return d > 0 ? `D-${d}` : d === 0 ? 'D-DAY' : 'ENDED';
@@ -215,7 +222,8 @@ export function dday(iso: string, now: number | null) {
 export const localDay = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
 export const showYear = (iso: string) => Number(iso.slice(0, 4));
 
-export function fmtDate(iso: string, lang: 'en' | 'ko', end?: string) {
+export function fmtDate(iso: string, lang: 'en' | 'ko', end?: string, tba?: boolean) {
+  if (tba) return `${showYear(iso)} · ${lang === 'ko' ? '날짜 추후 공개' : 'Date TBA'}`;
   const loc = lang === 'ko' ? 'ko-KR' : 'en-US';
   const a = localDay(iso).toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
   if (!end || end.slice(0, 10) === iso.slice(0, 10)) return a;

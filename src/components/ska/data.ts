@@ -73,6 +73,8 @@ export type Show = {
   venue: L;
   start: string; // ISO date, local show time
   end?: string;
+  /** Date not fixed yet: `start` is a placeholder at the end of the edition year, shown as "2027 · Date TBA". */
+  dateTBA?: boolean;
   poster?: string;
   summary: L;
   lineup: Artist[];

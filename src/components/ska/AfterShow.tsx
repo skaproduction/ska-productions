@@ -59,7 +59,7 @@ export default function AfterShow({ photos, brand }: { photos: Photo[]; brand: B
   );
 }
 
-function Lightbox({
+export function Lightbox({
   photos,
   index,
   onIndex,

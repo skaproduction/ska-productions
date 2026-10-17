@@ -140,6 +140,7 @@ type Draft = {
   poster?: string;
   lineup: Artist[];
   gallery: Photo[];
+  timetableImages: Photo[];
   seatMap?: string;
   zones: Zone[];
 };
@@ -166,6 +167,7 @@ function toDraft(show?: Show): Draft {
       summary: emptyL(),
       lineup: [],
       gallery: [],
+      timetableImages: [],
       zones: ZONES.map((z) => ({ ...z })),
     };
   }
@@ -186,6 +188,7 @@ function toDraft(show?: Show): Draft {
     poster: show.poster,
     lineup: show.lineup.map((a) => ({ ...a })),
     gallery: (show.gallery ?? []).map((p) => ({ ...p })),
+    timetableImages: (show.timetableImages ?? []).map((p) => ({ ...p })),
     seatMap: show.seatMap,
     zones: show.zones.map((z) => ({ ...z, tier: { ...z.tier } })),
   };
@@ -205,6 +208,7 @@ const fromDraft = (d: Draft) => ({
   poster: d.poster,
   lineup: d.lineup,
   gallery: d.gallery,
+  timetableImages: d.timetableImages,
   seatMap: d.seatMap,
   zones: d.zones,
 });
@@ -610,6 +614,25 @@ function ShowEditor({
           {/* poster */}
           <Group title={t({ en: 'Poster', ko: '포스터' })}>
             <PosterField draft={d} onChange={(url) => set('poster', url)} onError={onError} />
+          </Group>
+
+          {/* timetable images */}
+          <Group
+            title={t({ en: 'Timetable', ko: '타임테이블' })}
+            aside={<span className="text-xs text-white/50">{d.timetableImages.length} {t({ en: 'images', ko: '장' })}</span>}
+          >
+            <GalleryEditor
+              gallery={d.timetableImages}
+              onChange={(g) => set('timetableImages', g)}
+              onError={onError}
+              slug={`timetable-${d.slug || d.title}`}
+              cover={false}
+              captionPlaceholder={{ en: 'Tab name, e.g. DAY 1', ko: '탭 이름 (예: DAY 1)' }}
+              hint={{
+                en: 'Upload the timetable as images — one per day or stage. They replace the built-in timetable on the show page; the name you give each image becomes its tab.',
+                ko: '타임테이블을 이미지로 올리세요. 날짜나 스테이지마다 한 장씩 올리면 됩니다. 공연 페이지의 기본 타임테이블 대신 표시되고, 각 이미지의 이름이 탭 이름이 됩니다.',
+              }}
+            />
           </Group>
 
           {/* seat map */}
@@ -1023,11 +1046,17 @@ function GalleryEditor({
   onChange,
   onError,
   slug,
+  hint,
+  cover = true,
+  captionPlaceholder,
 }: {
   gallery: Photo[];
   onChange: (g: Photo[]) => void;
   onError: (m: string) => void;
   slug: string;
+  hint?: L;
+  cover?: boolean;
+  captionPlaceholder?: L;
 }) {
   const { t } = useLang();
   const input = useRef<HTMLInputElement>(null);
@@ -1045,7 +1074,7 @@ function GalleryEditor({
     let failed = 0;
     for (const [i, f] of images.entries()) {
       try {
-        const url = await uploadImage(f, `aftershow-${slug}`);
+        const url = await uploadImage(f, cover ? `aftershow-${slug}` : slug);
         const next = [...latest.current, { id: newId(), url }];
         latest.current = next;
         onChange(next);
@@ -1070,10 +1099,12 @@ function GalleryEditor({
   return (
     <div>
       <p className="-mt-2 mb-4 text-xs text-white/45">
-        {t({
-          en: 'Photos from the show appear in an “After Show” tab on the show page. Select or drop several at once. The first photo is the cover in History.',
-          ko: '공연 현장 사진은 공연 페이지의 “After Show” 탭에 표시됩니다. 여러 장을 한 번에 선택하거나 끌어다 놓을 수 있어요. 첫 번째 사진은 History의 대표 이미지로 쓰입니다.',
-        })}
+        {t(
+          hint ?? {
+            en: 'Photos from the show appear in an “After Show” tab on the show page. Select or drop several at once. The first photo is the cover in History.',
+            ko: '공연 현장 사진은 공연 페이지의 “After Show” 탭에 표시됩니다. 여러 장을 한 번에 선택하거나 끌어다 놓을 수 있어요. 첫 번째 사진은 History의 대표 이미지로 쓰입니다.',
+          },
+        )}
       </p>
       <div
         onDragOver={(e) => {
@@ -1093,7 +1124,7 @@ function GalleryEditor({
             <div className="relative aspect-[4/3]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.url} alt="" className="h-full w-full object-cover" />
-              {i === 0 && (
+              {cover && i === 0 && (
                 <span className="absolute left-2 top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-black">{t({ en: 'Cover', ko: '대표' })}</span>
               )}
               <div className="absolute inset-x-0 top-0 flex justify-end gap-1 p-1.5 opacity-0 transition group-hover:opacity-100">
@@ -1110,7 +1141,7 @@ function GalleryEditor({
             </div>
             <input
               className="w-full bg-transparent px-2.5 py-2 text-xs text-white outline-none placeholder:text-white/30"
-              placeholder={t({ en: 'Caption (optional)', ko: '설명 (선택)' })}
+              placeholder={t(captionPlaceholder ?? { en: 'Caption (optional)', ko: '설명 (선택)' })}
               value={p.caption ?? ''}
               onChange={(e) => update(p.id, { caption: e.target.value })}
             />

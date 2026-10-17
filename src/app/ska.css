@@ -459,3 +459,12 @@ html:has(.ska) {
     opacity: 1;
   }
 }
+
+/* no focus box after a mouse/touch click; keyboard users still get a visible ring */
+.ska :is(button, a, [role='tab']):focus:not(:focus-visible) {
+  outline: none;
+}
+.ska :is(button, a, [role='tab']):focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}

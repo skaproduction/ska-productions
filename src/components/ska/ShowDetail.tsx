@@ -3,10 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { brandById, type Brand, type L, type Show } from './data';
-import AfterShow from './AfterShow';
+import { brandById, type Brand, type L, type Photo, type Show } from './data';
+import AfterShow, { Lightbox } from './AfterShow';
 import SeatMap from './SeatMap';
-import { Arrow, Countdown, Magnetic, Poster, Reveal, Tilt, fmtDate, useLang } from './ui';
+import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, useLang } from './ui';
 
 const AFTER_SHOW = { id: 'aftershow', label: { en: 'After Show', ko: 'After Show' } };
 
@@ -304,6 +304,61 @@ function Lineup({ show, brand, past }: { show: Show; brand: Brand; past: boolean
   );
 }
 
+/** Uploaded timetable images: a tab per image, tap to view full screen, or open the original to pinch-zoom. */
+function TimetableImages({ images, brand }: { images: Photo[]; brand: Brand }) {
+  const { t } = useLang();
+  const [i, setI] = useState(0);
+  const [open, setOpen] = useState<number | null>(null);
+  const img = images[Math.min(i, images.length - 1)];
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h3 className="ska-display text-4xl">{t({ en: 'Timetable', ko: '타임테이블' })}</h3>
+        <a href={img.url} target="_blank" rel="noopener noreferrer" className="ska-btn ska-btn-ghost !py-2 !text-xs">
+          {t({ en: 'Open full size', ko: '원본 크게 보기' })} ↗
+        </a>
+      </div>
+      {images.length > 1 && (
+        <div className="mt-6 flex flex-wrap gap-2" role="tablist">
+          {images.map((p, n) => (
+            <button
+              key={p.id}
+              role="tab"
+              aria-selected={n === i}
+              onClick={() => setI(n)}
+              className="rounded-full border px-4 py-2 text-xs font-semibold transition"
+              style={{
+                borderColor: n === i ? brand.accent : 'rgba(255,255,255,.15)',
+                background: n === i ? `${brand.accent}22` : 'transparent',
+                color: n === i ? brand.accent : 'rgba(255,255,255,.65)',
+              }}
+            >
+              {p.caption || `DAY ${n + 1}`}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        key={img.id}
+        onClick={() => setOpen(Math.min(i, images.length - 1))}
+        className="group relative mt-6 block w-full animate-[ska-in_.4s_ease] overflow-hidden rounded-2xl border border-white/10 bg-black"
+        aria-label={t({ en: 'View full screen', ko: '전체 화면으로 보기' })}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img.url} alt={img.caption ?? 'Timetable'} className="mx-auto block max-h-[80vh] w-auto max-w-full" />
+        <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white opacity-0 backdrop-blur transition group-hover:opacity-100">
+          ⤢ {t({ en: 'Full screen', ko: '크게 보기' })}
+        </span>
+      </button>
+      {open !== null && (
+        <Layer>
+          <Lightbox photos={images} index={open} onIndex={setOpen} onClose={() => setOpen(null)} accent={brand.accent} />
+        </Layer>
+      )}
+    </div>
+  );
+}
+
 function Timetable({ show, brand }: { show: Show; brand: Brand }) {
   const { t } = useLang();
   const key = `ska-plan-${show.slug}`;
@@ -321,6 +376,7 @@ function Timetable({ show, brand }: { show: Show; brand: Brand }) {
     } catch {}
   };
 
+  if (show.timetableImages?.length) return <TimetableImages images={show.timetableImages} brand={brand} />;
   if (show.stages.length === 0)
     return <p className="py-16 text-center text-white/50">{t({ en: 'Timetable to be announced.', ko: '타임테이블은 추후 공개됩니다.' })}</p>;
 

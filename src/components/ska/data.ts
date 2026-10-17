@@ -78,6 +78,8 @@ export type Show = {
   lineup: Artist[];
   /** After-show photos, uploaded in the admin once the show is over. */
   gallery?: Photo[];
+  /** Timetable as uploaded images (one per day/stage); shown instead of the built-in grid. */
+  timetableImages?: Photo[];
   /** Uploaded seat map (e.g. the ticketing site's venue map). Without it a generic layout is drawn. */
   seatMap?: string;
   stages: Stage[];

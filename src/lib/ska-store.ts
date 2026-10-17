@@ -118,7 +118,9 @@ async function writeShows(shows: Show[]) {
 }
 
 const imagesOf = (s?: Show) =>
-  [s?.poster, s?.seatMap, ...(s?.lineup ?? []).map((a) => a.photo), ...(s?.gallery ?? []).map((p) => p.url)].filter((u): u is string => !!u);
+  [s?.poster, s?.seatMap, ...(s?.lineup ?? []).map((a) => a.photo), ...(s?.gallery ?? []).map((p) => p.url), ...(s?.timetableImages ?? []).map((p) => p.url)].filter(
+    (u): u is string => !!u,
+  );
 
 /** Creates (no slug) or updates a show. Returns the saved show. */
 export function saveShow(raw: unknown) {
@@ -207,15 +209,18 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
       announced: !!a?.announced,
     }),
   );
-  const gallery = (Array.isArray(r.gallery) ? r.gallery : [])
-    .slice(0, 200)
-    .map((p: Record<string, unknown>, i): Photo | null => {
-      const url = media(p?.url);
-      if (!url) return null;
-      const caption = str(p?.caption, 200, 'caption');
-      return { id: str(p?.id, 40, 'photo') || `p${i}-${randomBytes(3).toString('hex')}`, url, ...(caption && { caption }) };
-    })
-    .filter((p): p is Photo => !!p);
+  const photos = (v: unknown, max: number) =>
+    (Array.isArray(v) ? v : [])
+      .slice(0, max)
+      .map((p: Record<string, unknown>, i): Photo | null => {
+        const url = media(p?.url);
+        if (!url) return null;
+        const caption = str(p?.caption, 200, 'caption');
+        return { id: str(p?.id, 40, 'photo') || `p${i}-${randomBytes(3).toString('hex')}`, url, ...(caption && { caption }) };
+      })
+      .filter((p): p is Photo => !!p);
+  const gallery = photos(r.gallery, 200);
+  const timetableImages = photos(r.timetableImages, 12);
   const pct = (v: unknown) => (typeof v === 'number' && v >= 0 && v <= 100 ? Math.round(v * 100) / 100 : undefined);
   const zones = Array.isArray(r.zones)
     ? r.zones.slice(0, 60).map(
@@ -245,6 +250,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     poster: media(r.poster),
     lineup,
     gallery,
+    timetableImages,
     seatMap: media(r.seatMap),
     zones,
   };

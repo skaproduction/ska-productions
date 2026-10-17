@@ -444,19 +444,39 @@ html:has(.ska) {
 
 /* History: posters deal out of a stack onto the shelf */
 .ska-deal {
-  animation: ska-deal 0.9s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation: ska-deal 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* posters riffle out of one pile: appear stacked in the middle, then fly to their slots */
 @keyframes ska-deal {
   0% {
-    transform: translateX(var(--dx, 0)) translateY(40px) rotate(var(--rot, 0deg)) scale(0.9);
+    transform: translate(var(--dx, 0), calc(var(--dy, 0px) + 60px)) perspective(900px) rotateY(-28deg) rotate(var(--rot, 0deg)) scale(0.82);
     opacity: 0;
   }
-  25% {
+  18% {
+    transform: translate(var(--dx, 0), var(--dy, 0px)) perspective(900px) rotateY(-12deg) rotate(var(--rot, 0deg)) scale(0.9);
     opacity: 1;
+  }
+  70% {
+    transform: translate(0, -10px) perspective(900px) rotateY(4deg) rotate(calc(var(--rot, 0deg) * -0.25)) scale(1.02);
   }
   100% {
     transform: none;
     opacity: 1;
+  }
+}
+.ska-rise {
+  animation: ska-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ska-rise {
+  from {
+    transform: translateY(50px) scale(0.92);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ska-deal,
+  .ska-rise {
+    animation: none;
   }
 }
 

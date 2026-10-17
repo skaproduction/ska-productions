@@ -229,9 +229,11 @@ export const STATS = [
 
 /** Site-wide options edited in the admin. */
 export type SiteSettings = {
-  /** Background music: starts softly when a visitor enters through the intro; visitors can toggle it. */
-  bgm?: { url: string; title?: string; volume: number; enabled: boolean };
+  /** Background music playlist: starts softly when a visitor enters through the intro; visitors can toggle it or skip. */
+  bgm?: { tracks: Track[]; volume: number; enabled: boolean; shuffle: boolean };
 };
+
+export type Track = { id: string; url: string; title?: string };
 
 export const CONTACT_EMAIL = 'booking@skaproductions.com';
 

@@ -4,7 +4,7 @@ import { revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from '@/components/ska/data';
+import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Track, type Zone } from '@/components/ska/data';
 
 // Two storage backends behind one API:
 // - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). The show list is one public
@@ -264,23 +264,36 @@ const readSettingsCached = unstable_cache(async () => (await readJson<SiteSettin
 });
 
 export async function getSettings({ fresh = false } = {}): Promise<SiteSettings> {
-  if (useBlob() && !fresh) return structuredClone(await readSettingsCached());
-  return (await readJson<SiteSettings>(BLOB_SETTINGS, SETTINGS_FILE)) ?? {};
+  const s = useBlob() && !fresh ? structuredClone(await readSettingsCached()) : ((await readJson<SiteSettings>(BLOB_SETTINGS, SETTINGS_FILE)) ?? {});
+  // settings saved before playlists held a single track
+  const old = s.bgm as (SiteSettings['bgm'] & { url?: string; title?: string }) | undefined;
+  if (old && !Array.isArray(old.tracks)) s.bgm = { tracks: old.url ? [{ id: 't0', url: old.url, title: old.title }] : [], volume: old.volume, enabled: old.enabled, shuffle: false };
+  return s;
 }
+
+const MAX_TRACKS = 20;
 
 export function saveSettings(raw: unknown) {
   return locked(async () => {
     const prev = await getSettings({ fresh: true });
     const r = (raw ?? {}) as { bgm?: Record<string, unknown> | null };
-    const url = media(r.bgm?.url);
+    const tracks = (Array.isArray(r.bgm?.tracks) ? r.bgm.tracks : [])
+      .slice(0, MAX_TRACKS)
+      .map((t: Record<string, unknown>, i): Track | null => {
+        const url = media(t?.url);
+        if (!url) return null;
+        const title = str(t?.title, 80, 'title');
+        return { id: str(t?.id, 40, 'track') || `t${i}-${randomBytes(3).toString('hex')}`, url, ...(title && { title }) };
+      })
+      .filter((t): t is Track => !!t);
     const vol = Number(r.bgm?.volume);
     const next: SiteSettings = {
-      bgm: url
+      bgm: tracks.length
         ? {
-            url,
-            title: str(r.bgm?.title, 80, 'title') || undefined,
+            tracks,
             volume: Number.isFinite(vol) ? Math.min(0.8, Math.max(0.05, Math.round(vol * 100) / 100)) : 0.25,
             enabled: r.bgm?.enabled !== false,
+            shuffle: r.bgm?.shuffle === true,
           }
         : undefined,
     };
@@ -292,7 +305,8 @@ export function saveSettings(raw: unknown) {
       await mkdir(ROOT, { recursive: true });
       await writeFile(SETTINGS_FILE, json);
     }
-    if (prev.bgm?.url && prev.bgm.url !== next.bgm?.url) await deleteImage(prev.bgm.url);
+    const kept = new Set(tracks.map((t) => t.url));
+    for (const t of prev.bgm?.tracks ?? []) if (!kept.has(t.url)) await deleteImage(t.url);
     return next;
   });
 }

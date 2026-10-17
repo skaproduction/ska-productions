@@ -20,10 +20,21 @@ const writePref = (v: 'on' | 'off') => {
   } catch {}
 };
 
+const shuffled = (n: number, avoidFirst?: number) => {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  if (n > 1 && a[0] === avoidFirst) [a[0], a[1]] = [a[1], a[0]]; // no back-to-back repeat between rounds
+  return a;
+};
+
 /**
- * Background music. Browsers only allow sound after a user gesture, so it starts (fading in) when
+ * Background music playlist. Browsers only allow sound after a user gesture, so it starts (fading in) when
  * the visitor clicks “enter” on the intro, or on their first click if they had it on last time.
- * A floating button toggles it; the choice is remembered. Renders nothing without a track.
+ * A floating button toggles it (the choice is remembered) and a small one skips to the next
+ * track. Tracks play in order or shuffled; renders nothing without tracks.
  */
 export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
   const { t } = useLang();
@@ -32,7 +43,12 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
   const raf = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [hint, setHint] = useState(false);
-  const active = !!bgm?.enabled && !!bgm.url && !path.startsWith('/admin');
+  const tracks = bgm?.tracks ?? [];
+  const many = tracks.length > 1;
+  const active = !!bgm?.enabled && tracks.length > 0 && !path.startsWith('/admin');
+  const order = useRef<number[]>([]);
+  const pos = useRef(0);
+  const skipping = useRef(false);
 
   const fadeTo = useCallback((target: number, ms: number, done?: () => void) => {
     const a = audio.current;
@@ -49,22 +65,64 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
     raf.current = requestAnimationFrame(step);
   }, []);
 
-  const start = useCallback(() => {
-    if (!bgm) return;
-    if (!audio.current) {
-      audio.current = new Audio(bgm.url);
-      audio.current.loop = true;
+  // the track to play at position `pos` of this visitor's play order
+  const current = useCallback(() => {
+    const n = tracks.length;
+    if (order.current.length !== n) order.current = bgm?.shuffle ? shuffled(n) : Array.from({ length: n }, (_, i) => i);
+    return tracks[order.current[pos.current % n]];
+  }, [tracks, bgm?.shuffle]);
+
+  const advance = useCallback(() => {
+    pos.current += 1;
+    if (pos.current >= tracks.length) {
+      pos.current = 0;
+      if (bgm?.shuffle) order.current = shuffled(tracks.length, order.current[order.current.length - 1]);
     }
-    const a = audio.current;
-    a.volume = 0;
-    a.play()
-      .then(() => {
+  }, [tracks.length, bgm?.shuffle]);
+
+  const playFrom = useCallback(
+    (fadeMs: number) => {
+      const a = audio.current;
+      if (!a || !bgm) return;
+      a.volume = 0;
+      return a.play().then(() => {
         setPlaying(true);
         setHint(false);
-        fadeTo(bgm.volume, 2500);
-      })
-      .catch(() => setHint(true)); // blocked: no gesture yet — nudge the visitor to tap the button
-  }, [bgm, fadeTo]);
+        fadeTo(bgm.volume, fadeMs);
+      });
+    },
+    [bgm, fadeTo],
+  );
+
+  const start = useCallback(() => {
+    if (!bgm || !tracks.length) return;
+    if (!audio.current) {
+      const a = new Audio(current().url);
+      a.loop = !many;
+      // when a track ends, move on to the next one
+      a.addEventListener('ended', () => {
+        if (skipping.current) return; // the skip already moves on
+        advance();
+        a.src = current().url;
+        playFrom(1500)?.catch(() => {});
+      });
+      audio.current = a;
+    }
+    playFrom(2500)?.catch(() => setHint(true)); // blocked: no gesture yet — nudge the visitor to tap the button
+  }, [bgm, tracks.length, many, current, advance, playFrom]);
+
+  const skip = () => {
+    const a = audio.current;
+    if (!a || !many || skipping.current) return;
+    skipping.current = true;
+    fadeTo(0, 350, () => {
+      advance();
+      a.src = current().url;
+      playFrom(1200)
+        ?.catch(() => {})
+        .finally(() => (skipping.current = false));
+    });
+  };
 
   const stop = useCallback(() => {
     setPlaying(false);
@@ -135,6 +193,23 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
   return (
     <Layer>
       <div className="fixed bottom-20 right-4 z-[74] flex items-center gap-2 lg:bottom-6 lg:left-6 lg:right-auto lg:flex-row-reverse">
+        {many && (
+          <button
+            onClick={skip}
+            tabIndex={playing ? 0 : -1}
+            aria-hidden={!playing}
+            aria-label={t({ en: 'Next track', ko: '다음 곡' })}
+            title={t({ en: 'Next track', ko: '다음 곡' })}
+            className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#111116]/85 text-white/70 backdrop-blur-md transition-all duration-300 hover:border-white hover:text-white ${
+              playing ? 'scale-100 opacity-100' : 'pointer-events-none scale-75 opacity-0'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
+              <path d="M5 5.5v13l9-6.5-9-6.5Z" />
+              <rect x="16" y="5.5" width="2.5" height="13" rx="1" />
+            </svg>
+          </button>
+        )}
         <span
           className={`pointer-events-none rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black shadow-lg transition-all duration-500 ${
             hint && !playing ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0'
@@ -146,7 +221,6 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
           onClick={toggle}
           aria-pressed={playing}
           aria-label={playing ? t({ en: 'Turn music off', ko: '음악 끄기' }) : t({ en: 'Turn music on', ko: '음악 켜기' })}
-          title={bgm?.title}
           className={`flex h-11 w-11 items-center justify-center rounded-full border bg-[#111116]/85 backdrop-blur-md transition hover:border-white ${
             playing ? 'border-white/40 text-white' : 'border-white/15 text-white/60'
           } ${hint && !playing ? 'animate-pulse' : ''}`}

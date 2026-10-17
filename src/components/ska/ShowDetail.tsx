@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { brandById, type Brand, type L, type Photo, type Show } from './data';
+import { artistDay, brandById, showDays, type Brand, type L, type Photo, type Show } from './data';
 import AfterShow, { Lightbox } from './AfterShow';
 import SeatMap from './SeatMap';
 import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, useLang } from './ui';
@@ -210,10 +210,15 @@ function Notify({ show, brand }: { show: Show; brand: Brand }) {
 }
 
 function Lineup({ show, brand, past }: { show: Show; brand: Brand; past: boolean }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [flipped, setFlipped] = useState<Set<string>>(() => new Set(past ? show.lineup.map((a) => a.id) : []));
-  const announced = show.lineup.filter((a) => a.announced);
-  const locked = show.lineup.length - announced.length;
+  const days = showDays(show.start, show.end);
+  // multi-day shows get a lineup per day, but only once artists have actually been given days
+  const multi = days.length > 1 && show.lineup.some((a) => artistDay(a, days.length) > 1);
+  const [day, setDay] = useState(1);
+  const list = multi ? show.lineup.filter((a) => artistDay(a, days.length) === day) : show.lineup;
+  const announced = list.filter((a) => a.announced);
+  const locked = list.length - announced.length;
   const toggle = (id: string) =>
     setFlipped((s) => {
       const n = new Set(s);
@@ -243,8 +248,35 @@ function Lineup({ show, brand, past }: { show: Show; brand: Brand; past: boolean
           </button>
         )}
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {show.lineup.map((a, i) => {
+      {multi && (
+        <div className="mt-6 flex flex-wrap gap-2" role="tablist">
+          {days.map((date, n) => {
+            const on = n + 1 === day;
+            return (
+              <button
+                key={date}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setDay(n + 1)}
+                className="rounded-full border px-4 py-2 text-xs font-semibold transition"
+                style={{
+                  borderColor: on ? brand.accent : 'rgba(255,255,255,.15)',
+                  background: on ? `${brand.accent}22` : 'transparent',
+                  color: on ? brand.accent : 'rgba(255,255,255,.65)',
+                }}
+              >
+                DAY {n + 1}
+                <span className="ml-1.5 font-normal opacity-70">
+                  {new Date(`${date}T00:00:00Z`).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' })}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {list.length === 0 && <p className="py-12 text-center text-white/50">{t({ en: 'Lineup to be announced.', ko: '라인업은 추후 공개됩니다.' })}</p>}
+      <div key={day} className="mt-6 grid animate-[ska-in_.4s_ease] grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {list.map((a, i) => {
           const isOn = flipped.has(a.id);
           return (
             <button

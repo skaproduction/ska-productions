@@ -232,6 +232,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
       name: str(a?.name, 80, 'artist'),
       photo: media(a?.photo),
       announced: !!a?.announced,
+      ...(Number.isInteger(a?.day) && (a.day as number) > 1 && (a.day as number) <= 14 && { day: a.day as number }),
     }),
   );
   const photos = (v: unknown, max: number) =>

@@ -87,7 +87,7 @@ export type Show = {
 };
 
 /** A lineup slot. Unannounced slots show as locked cards; announced ones flip to name + photo. */
-export type Artist = { id: string; name: string; photo?: string; announced: boolean };
+export type Artist = { id: string; name: string; photo?: string; announced: boolean; /** 1-based day of a multi-day show */ day?: number };
 export type Photo = { id: string; url: string; caption?: string };
 /**
  * A seating zone. x/y place its pin on the uploaded seat map, in % of the image; `shape` is an
@@ -98,6 +98,18 @@ export type Zone = { id: string; label: string; tier: L; price?: string; color?:
 /** A show is history once its last day is over. */
 export const isPast = (s: Pick<Show, 'start' | 'end'>, now = Date.now()) =>
   new Date(s.end ?? s.start).getTime() + 6 * 36e5 < now;
+
+/** Show days as YYYY-MM-DD (show-local), from the start date through the end date. */
+export function showDays(start: string, end?: string): string[] {
+  const first = Date.parse(`${start.slice(0, 10)}T00:00:00Z`);
+  const last = end ? Date.parse(`${end.slice(0, 10)}T00:00:00Z`) : first;
+  if (!Number.isFinite(first)) return [];
+  const n = Number.isFinite(last) && last > first ? Math.min(14, Math.round((last - first) / 864e5) + 1) : 1;
+  return Array.from({ length: n }, (_, i) => new Date(first + i * 864e5).toISOString().slice(0, 10));
+}
+
+/** Which day (1-based) an artist plays; unset or out of range counts as the nearest valid day. */
+export const artistDay = (a: Pick<Artist, 'day'>, days: number) => Math.min(Math.max(a.day ?? 1, 1), Math.max(days, 1));
 
 const tbaLineup = (announced: number, total: number): Artist[] =>
   Array.from({ length: total }, (_, i) => ({ id: `a${i + 1}`, name: '', announced: i < announced }));

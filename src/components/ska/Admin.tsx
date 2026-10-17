@@ -4,7 +4,7 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, brandById, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from './data';
+import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from './data';
 import MusicSettings from './MusicSettings';
 import VisitorStats from './VisitorStats';
 import SeatMapEditor from './SeatMapEditor';
@@ -662,7 +662,10 @@ function ShowEditor({
               </span>
             }
           >
-            <LineupEditor lineup={d.lineup} onChange={(l) => set('lineup', l)} accent={b.accent} onError={onError} slug={d.slug || d.title} />
+            <LineupEditor
+              lineup={d.lineup}
+              days={d.date ? showDays(d.date, d.endDate || undefined) : []}
+              onChange={(l) => set('lineup', l)} accent={b.accent} onError={onError} slug={d.slug || d.title} />
           </Group>
 
           {/* after-show gallery */}
@@ -877,27 +880,43 @@ function PosterField({ draft, onChange, onError }: { draft: Draft; onChange: (ur
   );
 }
 
+const dayTab = (date: string, lang: 'en' | 'ko') =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'UTC' });
+
 function LineupEditor({
   lineup,
+  days,
   onChange,
   accent,
   onError,
   slug,
 }: {
   lineup: Artist[];
+  /** show dates (YYYY-MM-DD); more than one gives each day its own lineup */
+  days: string[];
   onChange: (l: Artist[]) => void;
   accent: string;
   onError: (m: string) => void;
   slug: string;
 }) {
-  const { t } = useLang();
-  const add = (n: number) => onChange([...lineup, ...Array.from({ length: n }, () => ({ id: newId(), name: '', announced: false }))]);
+  const { t, lang } = useLang();
+  const multi = days.length > 1;
+  const [day, setDay] = useState(1);
+  const cur = Math.min(day, Math.max(days.length, 1));
+  const onDay = (a: Artist) => !multi || artistDay(a, days.length) === cur;
+  const shown = lineup.filter(onDay);
+  const add = (n: number) =>
+    onChange([...lineup, ...Array.from({ length: n }, () => ({ id: newId(), name: '', announced: false, ...(multi && cur > 1 && { day: cur }) }))]);
   const update = (id: string, patch: Partial<Artist>) => onChange(lineup.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= lineup.length) return;
+  // swap with the neighbour on the same day
+  const move = (id: string, dir: -1 | 1) => {
+    const i = shown.findIndex((a) => a.id === id);
+    const other = shown[i + dir];
+    if (!other) return;
+    const ai = lineup.findIndex((a) => a.id === id);
+    const bi = lineup.findIndex((a) => a.id === other.id);
     const next = [...lineup];
-    [next[i], next[j]] = [next[j], next[i]];
+    [next[ai], next[bi]] = [next[bi], next[ai]];
     onChange(next);
   };
 
@@ -908,23 +927,56 @@ function LineupEditor({
           en: 'Each row is one card on the show page. “Announced” cards flip to show the name and photo; the rest stay locked as “Coming soon”.',
           ko: '한 줄이 공연 페이지의 카드 한 장입니다. “공개”로 켠 카드는 뒤집으면 이름과 사진이 보이고, 나머지는 “공개 예정”으로 잠겨 있습니다.',
         })}
+        {multi &&
+          ' ' +
+            t({
+              en: 'This show runs several days, so each day has its own lineup — pick a day above the list. An artist playing two days is added to both.',
+              ko: '여러 날 공연이라 날짜별로 라인업을 따로 입력합니다. 위에서 날짜를 고르세요. 이틀 모두 나오는 아티스트는 각 날짜에 한 번씩 추가하세요.',
+            })}
       </p>
-      {lineup.length === 0 && (
+      {multi && (
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist">
+          {days.map((date, n) => {
+            const on = n + 1 === cur;
+            const count = lineup.filter((a) => artistDay(a, days.length) === n + 1).length;
+            return (
+              <button
+                key={date}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setDay(n + 1)}
+                className="rounded-full border px-4 py-2 text-xs font-semibold transition"
+                style={{
+                  borderColor: on ? accent : 'rgba(255,255,255,.15)',
+                  background: on ? `${accent}22` : 'transparent',
+                  color: on ? accent : 'rgba(255,255,255,.6)',
+                }}
+              >
+                DAY {n + 1} <span className="font-normal opacity-70">· {dayTab(date, lang)}</span>
+                <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {shown.length === 0 && (
         <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
-          {t({ en: 'No artists yet.', ko: '아직 아티스트가 없습니다.' })}
+          {multi ? t({ en: `No artists on DAY ${cur} yet.`, ko: `DAY ${cur}에 아직 아티스트가 없습니다.` }) : t({ en: 'No artists yet.', ko: '아직 아티스트가 없습니다.' })}
         </p>
       )}
       <ol className="space-y-2">
-        {lineup.map((a, i) => (
+        {shown.map((a, i) => (
           <ArtistRow
             key={a.id}
             artist={a}
             index={i}
-            total={lineup.length}
+            total={shown.length}
             accent={accent}
             slug={slug}
+            days={multi ? days.length : 0}
             onChange={(p) => update(a.id, p)}
-            onMove={(dir) => move(i, dir)}
+            onMove={(dir) => move(a.id, dir)}
             onRemove={() => onChange(lineup.filter((x) => x.id !== a.id))}
             onError={onError}
           />
@@ -932,14 +984,14 @@ function LineupEditor({
       </ol>
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={() => add(1)} className="ska-btn ska-btn-ghost !py-2 !text-xs">
-          + {t({ en: 'Add artist', ko: '아티스트 추가' })}
+          + {multi ? t({ en: `Add artist to DAY ${cur}`, ko: `DAY ${cur}에 아티스트 추가` }) : t({ en: 'Add artist', ko: '아티스트 추가' })}
         </button>
         <button type="button" onClick={() => add(5)} className="ska-btn ska-btn-ghost !py-2 !text-xs">
           + {t({ en: '5 TBA slots', ko: '미정 5팀 추가' })}
         </button>
-        {lineup.length > 0 && (
-          <button type="button" onClick={() => onChange(lineup.map((a) => ({ ...a, announced: true })))} className="ska-btn ska-btn-ghost !py-2 !text-xs">
-            {t({ en: 'Announce all', ko: '전체 공개' })}
+        {shown.length > 0 && (
+          <button type="button" onClick={() => onChange(lineup.map((a) => (onDay(a) ? { ...a, announced: true } : a)))} className="ska-btn ska-btn-ghost !py-2 !text-xs">
+            {multi ? t({ en: `Announce all on DAY ${cur}`, ko: `DAY ${cur} 전체 공개` }) : t({ en: 'Announce all', ko: '전체 공개' })}
           </button>
         )}
       </div>
@@ -953,6 +1005,7 @@ function ArtistRow({
   total,
   accent,
   slug,
+  days,
   onChange,
   onMove,
   onRemove,
@@ -963,6 +1016,8 @@ function ArtistRow({
   total: number;
   accent: string;
   slug: string;
+  /** number of show days when the lineup is split by day, else 0 */
+  days: number;
   onChange: (p: Partial<Artist>) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
@@ -1021,6 +1076,21 @@ function ArtistRow({
         <span className="h-2 w-2 rounded-full" style={{ background: a.announced ? accent : 'rgba(255,255,255,.3)' }} />
         {a.announced ? t({ en: 'Announced', ko: '공개' }) : t({ en: 'Hidden', ko: '비공개' })}
       </button>
+      {days > 1 && (
+        <select
+          className="ska-input !w-auto shrink-0 !py-1.5 !pl-2 !pr-7 !text-[11px] [color-scheme:dark]"
+          value={artistDay(a, days)}
+          onChange={(e) => onChange({ day: +e.target.value > 1 ? +e.target.value : undefined })}
+          aria-label={t({ en: 'Move to day', ko: '날짜 이동' })}
+          title={t({ en: 'Move to another day', ko: '다른 날짜로 옮기기' })}
+        >
+          {Array.from({ length: days }, (_, n) => (
+            <option key={n} value={n + 1}>
+              DAY {n + 1}
+            </option>
+          ))}
+        </select>
+      )}
       <div className="flex shrink-0 flex-col">
         <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="px-1 text-xs text-white/50 hover:text-white disabled:opacity-20" aria-label="Move up">
           ▲

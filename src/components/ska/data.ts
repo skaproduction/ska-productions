@@ -225,7 +225,7 @@ export const STATS = [
   { value: 24, suffix: '/7', label: { en: 'Booking desk', ko: '부킹 데스크' } },
 ];
 
-export const CONTACT_EMAIL = 'terry@skaproductions.com';
+export const CONTACT_EMAIL = 'booking@skaproductions.com';
 
 export const SOCIALS = [
   { name: 'Instagram', handle: '@skaproductions_official', url: 'https://www.instagram.com/skaproductions_official/' },

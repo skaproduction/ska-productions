@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { BRANDS, type Brand, type Show } from './data';
+import { SERIES as BRANDS, type Brand, type Show } from './data';
 import { Arrow, Reveal, SwipeDots, useLang, useSnapIndex } from './ui';
 
 export function focusShows(id: Brand['id'] | 'all') {

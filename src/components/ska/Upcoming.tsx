@@ -37,7 +37,7 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex flex-wrap gap-2">
-              {(['all', ...BRANDS.map((b) => b.id)] as Filter[]).map((f) => {
+              {(['all', ...BRANDS.filter((b) => b.series !== false || all.some((s) => s.brand === b.id)).map((b) => b.id)] as Filter[]).map((f) => {
                 const b = f === 'all' ? null : brandById(f);
                 const on = filter === f;
                 return (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { BRANDS } from './data';
+import { SERIES as BRANDS } from './data';
 import { Arrow, ChromeMark, Magnetic, Tilt, useLang } from './ui';
 
 const WORDS = [

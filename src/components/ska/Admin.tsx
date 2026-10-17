@@ -537,14 +537,15 @@ function ShowEditor({
           {/* basics */}
           <Group title={t({ en: 'Basics', ko: '기본 정보' })}>
             <div className="grid gap-4 sm:grid-cols-[1fr_1fr]">
-              <Field label={t({ en: 'Festival', ko: '페스티벌' })} className="sm:col-span-2">
+              <Field label={t({ en: 'Category', ko: '카테고리' })} className="sm:col-span-2">
                 <div className="flex flex-wrap gap-2">
                   {BRANDS.map((x) => (
                     <button
                       key={x.id}
                       type="button"
                       onClick={() =>
-                        setD((p) => ({ ...p, brand: x.id, title: p.title === brandById(p.brand).name ? x.name : p.title }))
+                        // a series fills in its name as the title; SHOW clears it so the show's own title is typed
+                        setD((p) => ({ ...p, brand: x.id, title: p.title === brandById(p.brand).name || !p.title ? (x.series === false ? '' : x.name) : p.title }))
                       }
                       className="rounded-full border px-4 py-2 text-xs font-semibold transition"
                       style={{

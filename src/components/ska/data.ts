@@ -266,7 +266,8 @@ export type SiteSettings = {
   bgm?: { tracks: Track[]; volume: number; enabled: boolean; shuffle: boolean };
 };
 
-export type Track = { id: string; url: string; title?: string };
+/** `off`: kept in the playlist but not played on the site. */
+export type Track = { id: string; url: string; title?: string; off?: boolean };
 
 export const CONTACT_EMAIL = 'booking@skaproductions.com';
 

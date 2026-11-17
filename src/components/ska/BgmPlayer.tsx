@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SiteSettings } from './data';
 import { Layer, useLang } from './ui';
 
@@ -43,7 +43,8 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
   const raf = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [hint, setHint] = useState(false);
-  const tracks = bgm?.tracks ?? [];
+  // tracks switched off in the admin stay in the playlist but aren't played
+  const tracks = useMemo(() => (bgm?.tracks ?? []).filter((t) => !t.off), [bgm?.tracks]);
   const many = tracks.length > 1;
   const active = !!bgm?.enabled && tracks.length > 0 && !path.startsWith('/admin');
   const order = useRef<number[]>([]);

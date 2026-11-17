@@ -310,7 +310,7 @@ export function saveSettings(raw: unknown) {
         const url = media(t?.url);
         if (!url) return null;
         const title = str(t?.title, 80, 'title');
-        return { id: str(t?.id, 40, 'track') || `t${i}-${randomBytes(3).toString('hex')}`, url, ...(title && { title }) };
+        return { id: str(t?.id, 40, 'track') || `t${i}-${randomBytes(3).toString('hex')}`, url, ...(title && { title }), ...(t?.off === true && { off: true }) };
       })
       .filter((t): t is Track => !!t);
     const vol = Number(r.bgm?.volume);

@@ -87,7 +87,11 @@ export default function MusicSettings({ settings, upload, onToast }: { settings:
         <div>
           <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-white/80">
             {t({ en: 'Background music', ko: '배경음악' })}
-            {has && <span className="ml-2 font-mono text-white/40">{draft.tracks.length}</span>}
+            {has && (
+              <span className="ml-2 font-mono text-white/40">
+                {draft.tracks.filter((x) => !x.off).length}/{draft.tracks.length} {t({ en: 'on', ko: '켜짐' })}
+              </span>
+            )}
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-white/45">
             {t({
@@ -117,7 +121,10 @@ export default function MusicSettings({ settings, upload, onToast }: { settings:
           <div>
             <ol className="space-y-2">
               {draft.tracks.map((tr, i) => (
-                <li key={tr.id} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-2">
+                <li
+                  key={tr.id}
+                  className={`flex items-center gap-2 rounded-xl border border-white/[0.08] p-2 transition ${tr.off ? 'bg-transparent opacity-50' : 'bg-white/[0.02]'}`}
+                >
                   <span className="w-6 text-center font-mono text-xs text-white/35">{i + 1}</span>
                   <button
                     type="button"
@@ -135,6 +142,16 @@ export default function MusicSettings({ settings, upload, onToast }: { settings:
                     onChange={(e) => setTracks((ts) => ts.map((x) => (x.id === tr.id ? { ...x, title: e.target.value } : x)))}
                     placeholder={t({ en: 'Track name (for your reference)', ko: '곡 이름 (관리용)' })}
                   />
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!tr.off}
+                    onClick={() => setTracks((ts) => ts.map((x) => (x.id === tr.id ? { ...x, off: x.off ? undefined : true } : x)))}
+                    title={tr.off ? t({ en: 'Off — not played on the site', ko: '꺼짐 — 사이트에서 재생 안 함' }) : t({ en: 'On — played on the site', ko: '켜짐 — 사이트에서 재생' })}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition ${tr.off ? 'bg-white/15' : 'bg-emerald-400'}`}
+                  >
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${tr.off ? 'left-0.5' : 'left-[18px]'}`} />
+                  </button>
                   <div className="flex shrink-0">
                     <IconBtn label={t({ en: 'Move up', ko: '위로' })} disabled={i === 0} onClick={() => move(i, -1)}>
                       ▲

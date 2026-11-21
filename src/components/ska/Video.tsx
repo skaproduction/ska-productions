@@ -111,7 +111,7 @@ export function VideoField({ value, onChange, upload, prefix, onError }: { value
     if (!file) return;
     if (!/\.(mp4|mov|webm)$/i.test(file.name) && !/^video\/(mp4|quicktime|webm)$/.test(file.type))
       return onError(t({ en: 'Use an MP4, MOV or WebM video.', ko: 'MP4, MOV, WebM 영상만 올릴 수 있어요.' }));
-    if (file.size > MAX_MB * 1024 * 1024) return onError(t({ en: `Max ${MAX_MB} MB — compress it first.`, ko: `최대 ${MAX_MB}MB까지예요. 용량을 줄여서 올려주세요.` }));
+    if (file.size > MAX_MB * 1024 * 1024) return onError(t({ en: `Max ${MAX_MB} MB — compress it first.`, ko: `최대 ${MAX_MB}MB까지예요. 용량을 줄여서 올려주세요.`, zh: `最大 ${MAX_MB} MB，請先壓縮。` }));
     setPct(0);
     try {
       onChange(await upload(file, prefix, setPct));

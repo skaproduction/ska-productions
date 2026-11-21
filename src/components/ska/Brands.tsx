@@ -128,7 +128,7 @@ export default function Brands({ shows, past = [] }: { shows: Show[]; past?: Sho
                             className="inline-flex items-center gap-2 text-sm font-semibold transition hover:gap-3"
                             style={{ color: b.accent }}
                           >
-                            {t({ en: `See ${count} upcoming show${count === 1 ? '' : 's'}`, ko: `예정 공연 ${count}개 보기` })} <Arrow />
+                            {t({ en: `See ${count} upcoming show${count === 1 ? '' : 's'}`, ko: `예정 공연 ${count}개 보기`, zh: `查看 ${count} 場近期演出` })} <Arrow />
                           </button>
                         )}
                         {pastCount > 0 && (
@@ -140,7 +140,7 @@ export default function Brands({ shows, past = [] }: { shows: Show[]; past?: Sho
                             className="inline-flex items-center gap-2 text-sm font-semibold text-white/75 transition hover:text-white"
                           >
                             <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 text-[10px]">▶</span>
-                            {t({ en: `See past shows (${pastCount})`, ko: `지난 공연 보기 (${pastCount})` })}
+                            {t({ en: `See past shows (${pastCount})`, ko: `지난 공연 보기 (${pastCount})`, zh: `查看歷屆演出（${pastCount}）` })}
                           </button>
                         )}
                       </div>

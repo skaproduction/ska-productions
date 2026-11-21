@@ -10,7 +10,7 @@ import NoticeSettings from './NoticeSettings';
 import { VideoField } from './Video';
 import VisitorStats from './VisitorStats';
 import SeatMapEditor from './SeatMapEditor';
-import { Arrow, Layer, Poster, fmtDate, useLang } from './ui';
+import { Arrow, Layer, Poster, fmtDate, locale, useLang, type Lang } from './ui';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
 const MAX_MB = 10;
@@ -378,7 +378,7 @@ export function AdminDashboard({
                       {s.title} <span className="text-white/40">{s.edition}</span>
                     </h2>
                     <p className="mt-1 text-xs text-white/50">{fmtDate(s.start, lang, s.end, s.dateTBA)}</p>
-                    <p className="text-xs text-white/50">{[s.city[lang], s.country[lang]].filter(Boolean).join(', ')}</p>
+                    <p className="text-xs text-white/50">{[t(s.city), t(s.country)].filter(Boolean).join(', ')}</p>
                     <p className="mt-2 text-xs text-white/40">
                       {t({ en: 'Lineup', ko: '라인업' })} {s.lineup.length} · {t({ en: 'announced', ko: '공개' })} {announced}
                       {' · '}
@@ -622,7 +622,7 @@ function ShowEditor({
                 <select className="ska-input [color-scheme:dark]" value={d.tz} onChange={(e) => set('tz', e.target.value)}>
                   {TIMEZONES.map((z) => (
                     <option key={z.v} value={z.v}>
-                      {z.label[lang]}
+                      {t(z.label)}
                     </option>
                   ))}
                 </select>
@@ -974,8 +974,8 @@ function PosterField({ draft, onChange, onError }: { draft: Draft; onChange: (ur
   );
 }
 
-const dayTab = (date: string, lang: 'en' | 'ko') =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'UTC' });
+const dayTab = (date: string, lang: Lang) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(lang), { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'UTC' });
 
 function LineupEditor({
   lineup,

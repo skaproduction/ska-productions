@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Show } from './data';
-import { useLang } from './ui';
+import { useLang, type Lang } from './ui';
 
 type Stats = {
   days: { day: string; views: number; visitors: number }[];
@@ -58,7 +58,7 @@ export default function VisitorStats({ shows }: { shows: Show[] }) {
 
   const countryName = useMemo(() => {
     try {
-      const dn = new Intl.DisplayNames([lang === 'ko' ? 'ko' : 'en'], { type: 'region' });
+      const dn = new Intl.DisplayNames([lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'en'], { type: 'region' });
       return (cc: string) => (/^[A-Z]{2}$/.test(cc) ? (dn.of(cc) ?? cc) : t({ en: 'Unknown', ko: '알 수 없음' }));
     } catch {
       return (cc: string) => cc;
@@ -183,7 +183,7 @@ function DailyBars({
   metric: 'visitors' | 'views';
   hover: number | null;
   onHover: (i: number | null) => void;
-  lang: 'en' | 'ko';
+  lang: Lang;
 }) {
   const W = 720;
   const H = 180;

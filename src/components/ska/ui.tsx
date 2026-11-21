@@ -13,10 +13,19 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import type { Brand, L } from './data';
+import { ZH } from './zh';
 
 /* ---------- language ---------- */
 
-type Lang = 'en' | 'ko';
+export type Lang = 'en' | 'ko' | 'zh';
+export const LANGS: { id: Lang; label: string }[] = [
+  { id: 'en', label: 'EN' },
+  { id: 'ko', label: 'KO' },
+  { id: 'zh', label: '中文' },
+];
+/** Locale for dates and numbers. */
+export const locale = (l: Lang) => (l === 'ko' ? 'ko-KR' : l === 'zh' ? 'zh-TW' : 'en-US');
+const HTML_LANG: Record<Lang, string> = { en: 'en', ko: 'ko', zh: 'zh-Hant' };
 const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({ lang: 'en', setLang: () => {} });
 
 export function LangProvider({ children }: { children: ReactNode }) {
@@ -24,11 +33,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ska-lang');
-      if (saved === 'en' || saved === 'ko') setLangState(saved);
+      if (saved === 'en' || saved === 'ko' || saved === 'zh') setLangState(saved);
+      // first visit from a Traditional-Chinese browser (Taiwan, Hong Kong): start in 中文
+      else if (/^zh-(tw|hk|mo|hant)/i.test(navigator.language)) setLangState('zh');
     } catch {}
   }, []);
   useEffect(() => {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = HTML_LANG[lang];
   }, [lang]);
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
@@ -41,7 +52,8 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
 export function useLang() {
   const { lang, setLang } = useContext(LangCtx);
-  const t = useCallback((s: L) => s[lang], [lang]);
+  // Chinese: the text's own zh, else the shared dictionary, else English
+  const t = useCallback((s: L) => (lang === 'zh' ? s.zh || ZH[s.en] || s.en : s[lang]), [lang]);
   return { lang, setLang, t };
 }
 
@@ -225,9 +237,9 @@ export function dday(iso: string, now: number | null, tba?: boolean) {
 export const localDay = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
 export const showYear = (iso: string) => Number(iso.slice(0, 4));
 
-export function fmtDate(iso: string, lang: 'en' | 'ko', end?: string, tba?: boolean) {
-  if (tba) return `${showYear(iso)} · ${lang === 'ko' ? '날짜 추후 공개' : 'Date TBA'}`;
-  const loc = lang === 'ko' ? 'ko-KR' : 'en-US';
+export function fmtDate(iso: string, lang: Lang, end?: string, tba?: boolean) {
+  if (tba) return `${showYear(iso)} · ${lang === 'ko' ? '날짜 추후 공개' : lang === 'zh' ? '日期待公布' : 'Date TBA'}`;
+  const loc = locale(lang);
   const a = localDay(iso).toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
   if (!end || end.slice(0, 10) === iso.slice(0, 10)) return a;
   const sameMonth = end.slice(0, 7) === iso.slice(0, 7);

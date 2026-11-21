@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SOCIALS, type L } from './data';
-import { Arrow, Layer, SocialIcon, useLang } from './ui';
+import { Arrow, LANGS, Layer, SocialIcon, useLang } from './ui';
 
 const SECTIONS: { id: string; label: L }[] = [
   { id: 'stages', label: { en: 'Our Stages', ko: '오리지널 IP' } },
@@ -166,13 +166,14 @@ export default function MobileDock() {
             <div className="flex items-center justify-between">
               <p className="ska-eyebrow">SKA Productions</p>
               <div className="flex rounded-full border border-white/15 p-0.5 text-[11px] font-semibold">
-                {(['en', 'ko'] as const).map((l) => (
+                {LANGS.map(({ id: l, label }) => (
                   <button
                     key={l}
                     onClick={() => setLang(l)}
+                    aria-pressed={lang === l}
                     className={`rounded-full px-3 py-1 uppercase transition ${lang === l ? 'bg-white text-black' : 'text-white/60'}`}
                   >
-                    {l}
+                    {label}
                   </button>
                 ))}
               </div>

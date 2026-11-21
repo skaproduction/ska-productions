@@ -1,7 +1,8 @@
 // Brand definitions and the starting show list. Shows are edited at /ska/admin and stored by
 // src/lib/ska-store.ts; DEFAULT_SHOWS only seeds the store until the first admin save.
 
-export type L = { en: string; ko: string };
+/** Text in English and Korean; `zh` (Traditional Chinese) is optional — see zh.ts for the shared dictionary. */
+export type L = { en: string; ko: string; zh?: string };
 export type BrandId = 'kpop' | 'rock' | 'swag' | 'concert';
 
 export type Brand = {

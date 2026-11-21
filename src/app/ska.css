@@ -592,6 +592,17 @@ html:has(.ska) {
   }
 }
 
+/* 中文: the display font has no Chinese, so headlines use a heavy Traditional-Chinese system font,
+   and lines are balanced so a word never ends up alone (e.g. “台。”) */
+html[lang='zh-Hant'] .ska-display {
+  font-family: var(--font-display), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+html[lang='zh-Hant'] .ska :is(h1, h2, h3, p) {
+  text-wrap: balance;
+}
+
 /* no focus box after a mouse/touch click; keyboard users still get a visible ring */
 .ska :is(button, a, [role='tab']):focus:not(:focus-visible) {
   outline: none;

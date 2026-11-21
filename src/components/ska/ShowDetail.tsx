@@ -7,7 +7,7 @@ import { artistDay, brandById, showDays, type Brand, type L, type Photo, type Sh
 import AfterShow, { Lightbox } from './AfterShow';
 import SeatMap from './SeatMap';
 import { Player, VideoModal, VideoThumb } from './Video';
-import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, useLang } from './ui';
+import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, locale, useLang } from './ui';
 
 const AFTER_SHOW = { id: 'aftershow', label: { en: 'After Show', ko: 'After Show' } };
 
@@ -197,7 +197,7 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
             <div>
               <p className="ska-eyebrow">{t({ en: 'Promoters & brands', ko: '프로모터 · 브랜드' })}</p>
               <h2 className="ska-display mt-3 text-[clamp(32px,5vw,64px)] leading-[0.95]">
-                {t({ en: `Bring ${b.name} to your city.`, ko: `${b.name}를 당신의 도시로.` })}
+                {t({ en: `Bring ${b.name} to your city.`, ko: `${b.name}를 당신의 도시로.`, zh: `把 ${b.name} 帶到你的城市。` })}
               </h2>
             </div>
             <Magnetic>
@@ -317,7 +317,7 @@ function Lineup({ show, brand, past }: { show: Show; brand: Brand; past: boolean
               >
                 DAY {n + 1}
                 <span className="ml-1.5 font-normal opacity-70">
-                  {new Date(`${date}T00:00:00Z`).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' })}
+                  {new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(lang), { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' })}
                 </span>
               </button>
             );

@@ -8,7 +8,7 @@ import BgmPlayer from './BgmPlayer';
 import Tracker from './Tracker';
 import { CONTACT_EMAIL, SOCIALS, type SiteSettings } from './data';
 import MobileDock from './MobileDock';
-import { Arrow, LangProvider, Magnetic, SocialIcon, useLang } from './ui';
+import { Arrow, LANGS, LangProvider, Magnetic, SocialIcon, useLang } from './ui';
 
 const NAV = [
   { href: '/#stages', label: { en: 'Our Stages', ko: '오리지널 IP' } },
@@ -99,14 +99,14 @@ function Nav() {
 
         <div className="flex items-center gap-3">
           <div className="flex rounded-full border border-white/15 p-0.5 text-[11px] font-semibold">
-            {(['en', 'ko'] as const).map((l) => (
+            {LANGS.map(({ id: l, label }) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
                 className={`rounded-full px-2.5 py-1 uppercase transition ${lang === l ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}
                 aria-pressed={lang === l}
               >
-                {l === 'en' ? 'EN' : 'KO'}
+                {label}
               </button>
             ))}
           </div>

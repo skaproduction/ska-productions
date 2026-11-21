@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BRANDS, brandById, type BrandId, type Show } from './data';
 import { VideoModal, VideoThumb } from './Video';
-import { Arrow, Countdown, Poster, Reveal, SwipeDots, Tilt, dday, fmtDate, useLang, useNow, useSnapIndex } from './ui';
+import { Arrow, Countdown, Poster, Reveal, SwipeDots, Tilt, dday, fmtDate, locale, useLang, useNow, useSnapIndex } from './ui';
 
 type Filter = BrandId | 'all';
 
@@ -190,7 +190,7 @@ function Timeline({ shows }: { shows: Show[] }) {
           <div className="relative grid" style={{ gridTemplateColumns: `repeat(${months.length}, 1fr)` }}>
             {months.map((m) => (
               <div key={m.toISOString()} className="border-l border-white/10 pl-2 pt-10 text-[11px] uppercase tracking-widest text-white/40">
-                {m.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' })}
+                {m.toLocaleDateString(locale(lang), { month: 'short' })}
                 {m.getMonth() === 0 && <span className="ml-1 text-white/70">{m.getFullYear()}</span>}
               </div>
             ))}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { liveNotices, type Notice } from './data';
 import { Arrow, Layer, useLang } from './ui';
-import { YouTube, duckMusic } from './Video';
+import { Player, duckMusic } from './Video';
 
 const HIDE = 'ska-news-hide'; // { [noticeId]: 'YYYY-MM-DD' } — "don't show again today"
 const SHOWN = 'ska-news-shown'; // once per visit (session)
@@ -124,7 +124,7 @@ export default function NoticePopup({ notices }: { notices?: Notice[] }) {
                 ✕
               </button>
             </div>
-            <YouTube key={v.id} id={v.video!} autoplay title={t(v.title)} className="ska-pop shadow-[0_40px_120px_-30px_rgba(0,0,0,1)] ring-1 ring-white/10" />
+            <Player key={v.id} src={v.video!} autoplay title={t(v.title)} className="ska-pop shadow-[0_40px_120px_-30px_rgba(0,0,0,1)] ring-1 ring-white/10" />
             <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 {t(v.title) && <h2 className="ska-display text-3xl leading-tight sm:text-4xl">{t(v.title)}</h2>}

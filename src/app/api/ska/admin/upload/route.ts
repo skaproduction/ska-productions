@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/ska-auth';
-import { AUDIO_TYPES, BLOB_UPLOAD_PATH_RE, IMAGE_TYPES, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES } from '@/lib/ska-store';
+import { AUDIO_TYPES, BLOB_UPLOAD_PATH_RE, IMAGE_TYPES, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, VIDEO_TYPES } from '@/lib/ska-store';
 
 export const runtime = 'nodejs';
 
@@ -19,9 +19,10 @@ export async function POST(req: Request) {
         if (!(await isAdmin())) throw new Error('unauthorized');
         if (!BLOB_UPLOAD_PATH_RE.test(pathname)) throw new Error('bad_pathname');
         const audio = /\.(mp3|m4a)$/.test(pathname);
+        const video = /\.(mp4|webm|mov)$/.test(pathname);
         return {
-          allowedContentTypes: Object.keys(audio ? AUDIO_TYPES : IMAGE_TYPES),
-          maximumSizeInBytes: audio ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES,
+          allowedContentTypes: Object.keys(video ? VIDEO_TYPES : audio ? AUDIO_TYPES : IMAGE_TYPES),
+          maximumSizeInBytes: video ? MAX_VIDEO_BYTES : audio ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES,
           addRandomSuffix: false,
         };
       },

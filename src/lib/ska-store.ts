@@ -29,11 +29,13 @@ export const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image
 export const AUDIO_TYPES: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a' };
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
-export const MEDIA_FILE_RE = /^[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
+export const VIDEO_TYPES: Record<string, string> = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+export const MEDIA_FILE_RE = /^[a-z0-9-]+\.(jpg|png|webp|mp3|m4a|mp4|webm|mov)$/;
 /** Blob pathname a browser upload may write to (checked before issuing an upload token). */
-export const BLOB_UPLOAD_PATH_RE = /^ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
+export const BLOB_UPLOAD_PATH_RE = /^ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a|mp4|webm|mov)$/;
 const MEDIA_PREFIX = '/api/ska/media/';
-const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a)$/;
+const BLOB_MEDIA_RE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ska\/media\/[a-z0-9-]+\.(jpg|png|webp|mp3|m4a|mp4|webm|mov)$/;
 // versioned folders; the single files are where data lived before versioning (read as a fallback)
 const BLOB_SHOWS = 'ska/data/shows/';
 const BLOB_SETTINGS = 'ska/data/settings/';
@@ -143,7 +145,7 @@ async function writeShows(shows: Show[]) {
 }
 
 const imagesOf = (s?: Show) =>
-  [s?.poster, s?.seatMap, ...(s?.lineup ?? []).map((a) => a.photo), ...(s?.gallery ?? []).map((p) => p.url), ...(s?.timetableImages ?? []).map((p) => p.url)].filter(
+  [s?.poster, s?.seatMap, s?.promoVideo, ...(s?.lineup ?? []).map((a) => a.photo), ...(s?.gallery ?? []).map((p) => p.url), ...(s?.timetableImages ?? []).map((p) => p.url)].filter(
     (u): u is string => !!u,
   );
 
@@ -213,6 +215,8 @@ const iso = (v: unknown, field: string, required: boolean) => {
     throw new InvalidShow(`bad_${field}`);
   return s;
 };
+/** A promo / news video: an uploaded file's URL or a YouTube video id. */
+const videoRef = (v: unknown) => media(v) ?? youtubeId(typeof v === 'string' ? v : '') ?? undefined;
 const media = (v: unknown) => {
   const s = typeof v === 'string' ? v : '';
   const local = s.startsWith(MEDIA_PREFIX) && MEDIA_FILE_RE.test(s.slice(MEDIA_PREFIX.length));
@@ -268,7 +272,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     title: str(r.title, 60, 'title', true),
     edition: str(r.edition, 60, 'edition'),
     ...(r.dateTBA === true && { dateTBA: true }),
-    ...(youtubeId(r.promoVideo as string) && { promoVideo: youtubeId(r.promoVideo as string)! }),
+    ...(videoRef(r.promoVideo) && { promoVideo: videoRef(r.promoVideo)! }),
     city: loc(r.city, 60, 'city'),
     country: loc(r.country, 60, 'country'),
     venue: loc(r.venue, 120, 'venue'),
@@ -325,7 +329,8 @@ export function saveSettings(raw: unknown) {
           shuffle: r.bgm?.shuffle === true,
         }
       : undefined;
-    const notices = 'notices' in r ? normalizeNotices(r.notices) : prev.notices;
+    const hasNotices = 'notices' in r;
+    const notices = hasNotices ? normalizeNotices(r.notices) : prev.notices;
     const next: SiteSettings = { bgm: hasBgm ? bgm : prev.bgm, ...(notices?.length && { notices }) };
     const json = JSON.stringify(next, null, 2);
     if (useBlob()) {
@@ -334,6 +339,10 @@ export function saveSettings(raw: unknown) {
     } else {
       await mkdir(ROOT, { recursive: true });
       await writeFile(SETTINGS_FILE, json);
+    }
+    if (hasNotices) {
+      const kept = new Set((notices ?? []).map((n) => n.video));
+      for (const n of prev.notices ?? []) if (n.video && !kept.has(n.video)) await deleteImage(n.video);
     }
     if (hasBgm) {
       const kept = new Set(tracks.map((t) => t.url));
@@ -360,7 +369,7 @@ function normalizeNotices(v: unknown): Notice[] {
   return (Array.isArray(v) ? v : [])
     .slice(0, MAX_NOTICES)
     .map((n: Record<string, unknown>, i): Notice => {
-      const video = youtubeId(n?.video as string) ?? undefined;
+      const video = videoRef(n?.video);
       const body = loc(n?.body, 600, 'body');
       const linkLabel = loc(n?.linkLabel, 40, 'linkLabel');
       const until = typeof n?.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(n.until) ? n.until : undefined;
@@ -381,9 +390,10 @@ function normalizeNotices(v: unknown): Notice[] {
 /* ---------- images & audio ---------- */
 
 export async function saveImage(file: File, prefix: string) {
-  const ext = IMAGE_TYPES[file.type] ?? AUDIO_TYPES[file.type];
+  const ext = IMAGE_TYPES[file.type] ?? AUDIO_TYPES[file.type] ?? VIDEO_TYPES[file.type];
   if (!ext) throw new InvalidShow('unsupported_type');
-  if (file.size > (AUDIO_TYPES[file.type] ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES)) throw new InvalidShow('too_large');
+  const max = VIDEO_TYPES[file.type] ? MAX_VIDEO_BYTES : AUDIO_TYPES[file.type] ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES;
+  if (file.size > max) throw new InvalidShow('too_large');
   const safe = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'img';
   const name = `${safe}-${Date.now()}-${randomBytes(3).toString('hex')}.${ext}`;
   if (useBlob()) {

@@ -2,18 +2,24 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { youtubeId, type L, type Notice, type SiteSettings } from './data';
+import { videoSrc, type L, type Notice, type SiteSettings } from './data';
 import { useLang } from './ui';
-import { youtubeThumb } from './Video';
+import { VideoField } from './Video';
 
 const MAX = 12;
 const empty = (): L => ({ en: '', ko: '' });
 const newId = () => `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-// in the editor a video is kept as the link that was pasted
-const toDraft = (ns: Notice[] = []) => ns.map((n) => ({ ...n, video: n.video ? `https://youtu.be/${n.video}` : '' }));
+// in the editor an uploaded video keeps its URL and a YouTube video shows as a link
+const toDraft = (ns: Notice[] = []) =>
+  ns.map((n) => {
+    const v = videoSrc(n.video);
+    return { ...n, video: !v ? '' : 'file' in v ? v.file : `https://youtu.be/${v.youtube}` };
+  });
+
+type Upload = (file: File, prefix: string, onProgress?: (pct: number) => void) => Promise<string>;
 
 /** Admin card for the homepage news pop-up: video notices open first, text notices follow as a NEWS card. */
-export default function NoticeSettings({ settings, onToast }: { settings: SiteSettings; onToast: (m: string) => void }) {
+export default function NoticeSettings({ settings, upload, onToast }: { settings: SiteSettings; upload: Upload; onToast: (m: string) => void }) {
   const { t } = useLang();
   const router = useRouter();
   const saved = toDraft(settings.notices);
@@ -34,8 +40,8 @@ export default function NoticeSettings({ settings, onToast }: { settings: SiteSe
     });
 
   const save = async () => {
-    const bad = list.find((n) => n.kind === 'video' && !youtubeId(n.video));
-    if (bad) return onToast(t({ en: 'A video notice needs a YouTube link.', ko: '영상 공지에는 유튜브 링크가 필요해요.' }));
+    const bad = list.find((n) => n.kind === 'video' && !videoSrc(n.video));
+    if (bad) return onToast(t({ en: 'A video notice needs a video — upload one or paste a YouTube link.', ko: '영상 공지에는 영상이 필요해요. 파일을 올리거나 유튜브 링크를 넣어주세요.' }));
     setBusy(true);
     const res = await fetch('/api/ska/admin/settings', {
       method: 'POST',
@@ -81,7 +87,6 @@ export default function NoticeSettings({ settings, onToast }: { settings: SiteSe
 
       <ol className="mt-5 space-y-4">
         {list.map((n, i) => {
-          const vid = youtubeId(n.video);
           return (
             <li key={n.id} className={`rounded-xl border border-white/[0.08] p-4 transition ${n.on ? 'bg-white/[0.02]' : 'opacity-55'}`}>
               <div className="flex flex-wrap items-center gap-2">
@@ -125,21 +130,7 @@ export default function NoticeSettings({ settings, onToast }: { settings: SiteSe
 
               <div className="mt-4 grid gap-3">
                 {n.kind === 'video' && (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <input
-                      className="ska-input flex-1"
-                      value={n.video ?? ''}
-                      onChange={(e) => update(n.id, { video: e.target.value })}
-                      placeholder={t({ en: 'YouTube link', ko: '유튜브 링크' }) + ' — https://www.youtube.com/watch?v=…'}
-                      inputMode="url"
-                    />
-                    {vid ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={youtubeThumb(vid)} alt="" className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-white/15" />
-                    ) : (
-                      n.video && <span className="text-xs text-amber-300">{t({ en: 'Not a YouTube link', ko: '유튜브 링크가 아니에요' })}</span>
-                    )}
-                  </div>
+                  <VideoField value={n.video ?? ''} onChange={(v) => update(n.id, { video: v })} upload={upload} prefix={`news-${n.id}`} onError={onToast} />
                 )}
                 <Pair label={t({ en: 'Title', ko: '제목' })} value={n.title} onChange={(v) => update(n.id, { title: v })} />
                 <Pair label={t({ en: 'Text (optional)', ko: '내용 (선택)' })} value={n.body ?? empty()} onChange={(v) => update(n.id, { body: v })} multiline />

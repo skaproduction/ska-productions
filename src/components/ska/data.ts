@@ -92,7 +92,7 @@ export type Show = {
   venue: L;
   start: string; // ISO date, local show time
   end?: string;
-  /** YouTube video id of the promo video: on the show page while upcoming, in After Show once it's over. */
+  /** Promo video — an uploaded file's URL or a YouTube id: on the show page while upcoming, in After Show once it's over. */
   promoVideo?: string;
   /** Date not fixed yet: `start` is a placeholder at the end of the edition year, shown as "2027 · Date TBA". */
   dateTBA?: boolean;
@@ -275,7 +275,7 @@ export type Notice = {
   kind: 'video' | 'notice';
   title: L;
   body?: L;
-  /** YouTube video id (kind "video") */
+  /** kind "video": an uploaded file's URL or a YouTube id */
   video?: string;
   link?: string;
   linkLabel?: L;
@@ -290,6 +290,14 @@ export function youtubeId(v: string | undefined | null): string | null {
   if (/^[\w-]{11}$/.test(s)) return s;
   const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
   return m ? m[1] : null;
+}
+
+/** What a stored video points at: an uploaded file (URL) or a YouTube video (id). */
+export function videoSrc(v: string | undefined | null): { file: string } | { youtube: string } | null {
+  if (!v) return null;
+  if (v.startsWith('/api/ska/media/') || v.startsWith('https://')) return { file: v };
+  const id = youtubeId(v);
+  return id ? { youtube: id } : null;
 }
 
 /** Notices switched on and not past their last day (dates in Korean time). */

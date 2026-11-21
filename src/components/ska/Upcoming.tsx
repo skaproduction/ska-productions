@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BRANDS, brandById, type BrandId, type Show } from './data';
-import { VideoModal, youtubeThumb } from './Video';
+import { VideoModal, VideoThumb } from './Video';
 import { Arrow, Countdown, Poster, Reveal, SwipeDots, Tilt, dday, fmtDate, useLang, useNow, useSnapIndex } from './ui';
 
 type Filter = BrandId | 'all';
@@ -111,8 +111,7 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
                             aria-label={t({ en: 'Watch the promo video', ko: '프로모 영상 보기' })}
                           >
                             <span className="relative h-11 w-[72px] shrink-0 overflow-hidden rounded-lg">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={youtubeThumb(s.promoVideo)} alt="" className="h-full w-full object-cover" />
+                              <VideoThumb src={s.promoVideo} className="h-full w-full" />
                               <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-sm">▶</span>
                             </span>
                             <span className="text-xs font-semibold">{t({ en: 'Watch promo video', ko: '프로모 영상 보기' })}</span>
@@ -146,7 +145,7 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
           </div>
           <SwipeDots count={shows.length} index={row.index} onPick={row.go} colors={shows.map((s) => brandById(s.brand).accent)} className="sm:hidden" />
           {promo?.promoVideo && (
-            <VideoModal id={promo.promoVideo} title={`${promo.title} ${promo.edition}`} accent={brandById(promo.brand).accent} onClose={closePromo} />
+            <VideoModal src={promo.promoVideo} title={`${promo.title} ${promo.edition}`} accent={brandById(promo.brand).accent} onClose={closePromo} />
           )}
           </>
         ) : (

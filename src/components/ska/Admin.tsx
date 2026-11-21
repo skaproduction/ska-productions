@@ -4,10 +4,10 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, youtubeId } from './data';
+import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, videoSrc } from './data';
 import MusicSettings from './MusicSettings';
 import NoticeSettings from './NoticeSettings';
-import { youtubeThumb } from './Video';
+import { VideoField } from './Video';
 import VisitorStats from './VisitorStats';
 import SeatMapEditor from './SeatMapEditor';
 import { Arrow, Layer, Poster, fmtDate, useLang } from './ui';
@@ -77,17 +77,35 @@ export function AdminLogin({ configured }: { configured: boolean }) {
 
 /* ================= helpers ================= */
 
-const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a' };
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+};
+const BY_NAME: [RegExp, string][] = [
+  [/\.m4a$/i, 'audio/mp4'],
+  [/\.mp3$/i, 'audio/mpeg'],
+  [/\.mp4$/i, 'video/mp4'],
+  [/\.mov$/i, 'video/quicktime'],
+  [/\.webm$/i, 'video/webm'],
+];
 
 // On Vercel files go from the browser straight to Blob (function requests are capped at 4.5 MB);
 // locally they're posted to the dev server, which stores them on disk.
 let directUploads = false;
 
 async function uploadMedia(file: File, prefix: string, onProgress?: (pct: number) => void): Promise<string> {
-  const type = file.type || (/\.m4a$/i.test(file.name) ? 'audio/mp4' : /\.mp3$/i.test(file.name) ? 'audio/mpeg' : '');
+  const type = EXT[file.type] ? file.type : (BY_NAME.find(([re]) => re.test(file.name))?.[1] ?? '');
   const ext = EXT[type];
   if (!ext) throw new Error('type');
-  if (file.size > (type.startsWith('audio/') ? 15 : MAX_MB) * 1024 * 1024) throw new Error('size');
+  const video = type.startsWith('video/');
+  if (file.size > (video ? 200 : type.startsWith('audio/') ? 15 : MAX_MB) * 1024 * 1024) throw new Error('size');
   if (directUploads) {
     const safe = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'file';
     const name = `${safe}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -95,6 +113,8 @@ async function uploadMedia(file: File, prefix: string, onProgress?: (pct: number
       access: 'public',
       handleUploadUrl: '/api/ska/admin/upload',
       contentType: type,
+      // big videos go up in parts, so a dropped connection doesn't restart the whole file
+      multipart: video,
       onUploadProgress: (p) => onProgress?.(p.percentage),
     });
     return blob.url;
@@ -195,7 +215,8 @@ function toDraft(show?: Show, past = false): Draft {
     lineup: show.lineup.map((a) => ({ ...a })),
     gallery: (show.gallery ?? []).map((p) => ({ ...p })),
     timetableImages: (show.timetableImages ?? []).map((p) => ({ ...p })),
-    promoVideo: show.promoVideo ? `https://youtu.be/${show.promoVideo}` : '',
+    // uploaded files keep their URL; a YouTube id is shown as a link
+    promoVideo: !show.promoVideo ? '' : videoSrc(show.promoVideo) && 'file' in videoSrc(show.promoVideo)! ? show.promoVideo : `https://youtu.be/${show.promoVideo}`,
     seatMap: show.seatMap,
     zones: show.zones.map((z) => ({ ...z, tier: { ...z.tier } })),
   };
@@ -223,7 +244,7 @@ const fromDraft = (d: Draft) => ({
   lineup: d.lineup,
   gallery: d.gallery,
   timetableImages: d.timetableImages,
-  promoVideo: youtubeId(d.promoVideo) ?? undefined,
+  promoVideo: d.promoVideo.trim() || undefined,
   seatMap: d.seatMap,
   zones: d.zones,
 });
@@ -304,7 +325,7 @@ export function AdminDashboard({
 
         <MusicSettings settings={settings} upload={uploadMedia} onToast={setToast} />
 
-        <NoticeSettings settings={settings} onToast={setToast} />
+        <NoticeSettings settings={settings} upload={uploadMedia} onToast={setToast} />
 
         <div className="mt-12 flex gap-1 border-b border-white/10">
           {(
@@ -684,7 +705,7 @@ function ShowEditor({
 
           {/* promo video */}
           <Group title={t({ en: 'Promo video', ko: '프로모 영상' })}>
-            <PromoField value={d.promoVideo} onChange={(v) => set('promoVideo', v)} />
+            <PromoField value={d.promoVideo} onChange={(v) => set('promoVideo', v)} onError={onError} slug={d.slug || d.title} />
           </Group>
 
           {/* lineup */}
@@ -732,33 +753,17 @@ function ShowEditor({
   );
 }
 
-function PromoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PromoField({ value, onChange, onError, slug }: { value: string; onChange: (v: string) => void; onError: (m: string) => void; slug: string }) {
   const { t } = useLang();
-  const id = youtubeId(value);
   return (
     <div>
       <p className="-mt-2 mb-4 text-xs text-white/45">
         {t({
-          en: 'Paste a YouTube link. Before the show it plays from the show page and its card under Upcoming; once the show is over it moves to the show’s After Show tab by itself.',
-          ko: '유튜브 링크를 붙여넣으세요. 공연 전에는 공연 페이지와 예정 공연 카드에서 재생되고, 공연이 끝나면 자동으로 그 공연의 After Show 탭으로 옮겨져 보관됩니다.',
+          en: 'Upload a video from your computer or paste a YouTube link. Before the show it plays from the show page and its card under Upcoming; once the show is over it moves to the show’s After Show tab by itself.',
+          ko: '컴퓨터에서 영상을 올리거나 유튜브 링크를 붙여넣으세요. 공연 전에는 공연 페이지와 예정 공연 카드에서 재생되고, 공연이 끝나면 자동으로 그 공연의 After Show 탭으로 옮겨져 보관됩니다.',
         })}
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input className="ska-input flex-1" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" inputMode="url" />
-        {value && (
-          <button type="button" onClick={() => onChange('')} className="ska-btn ska-btn-ghost !py-2 !text-xs text-red-300">
-            {t({ en: 'Remove', ko: '삭제' })}
-          </button>
-        )}
-      </div>
-      {value && !id && <p className="mt-2 text-xs text-amber-300">{t({ en: 'That doesn’t look like a YouTube link.', ko: '유튜브 링크가 아닌 것 같아요.' })}</p>}
-      {id && (
-        <a href={`https://youtu.be/${id}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-3 rounded-xl border border-white/10 p-1.5 pr-4 text-xs text-white/70 hover:border-white/40">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={youtubeThumb(id)} alt="" className="h-12 w-20 rounded-lg object-cover" />
-          ✓ {t({ en: 'Video found — open on YouTube', ko: '영상 확인됨 — 유튜브에서 열기' })} ↗
-        </a>
-      )}
+      <VideoField value={value} onChange={onChange} upload={uploadMedia} prefix={`promo-${slug}`} onError={onError} />
     </div>
   );
 }

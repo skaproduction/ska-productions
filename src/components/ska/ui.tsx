@@ -27,6 +27,9 @@ export function LangProvider({ children }: { children: ReactNode }) {
       if (saved === 'en' || saved === 'ko') setLangState(saved);
     } catch {}
   }, []);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     try {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Anton, Noto_Serif } from 'next/font/google';
 import Shell from '@/components/ska/Shell';
+import { VERIFICATION } from '@/lib/ska-seo';
 import { getSettings } from '@/lib/ska-store';
 import './globals.css';
 import './ska.css';
@@ -16,8 +17,29 @@ const introScript = `try{if(sessionStorage.getItem('ska-intro-seen')&&!/[?&]intr
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.skaproductions.com'),
   title: 'SKA PRODUCTIONS INC. — Entertainment',
+  // English and Korean, so both Google and Naver searches match
   description:
-    'SKA Productions produces KPOP PRIME, 7 ROCK PRIME and SKA SUPER SWAG FESTIVAL, and books Korean artists for stages worldwide.',
+    'SKA Productions produces KPOP PRIME, 7 ROCK PRIME and SKA SUPER SWAG FESTIVAL, and books Korean artists for stages worldwide. SKA 프로덕션 — K-POP 콘서트·밴드·힙합 페스티벌 제작, 한국 아티스트 해외 공연 섭외.',
+  keywords: [
+    'SKA PRODUCTIONS',
+    'SKA 프로덕션',
+    'KPOP PRIME',
+    '7 ROCK PRIME',
+    'SKA SUPER SWAG FESTIVAL',
+    'K-POP concert',
+    'Korean artist booking',
+    'K-POP 콘서트',
+    '힙합 페스티벌',
+    '밴드 페스티벌',
+    '아티스트 섭외',
+  ],
+  alternates: { canonical: '/' },
+  ...((VERIFICATION.google || VERIFICATION.naver) && {
+    verification: {
+      ...(VERIFICATION.google && { google: VERIFICATION.google }),
+      ...(VERIFICATION.naver && { other: { 'naver-site-verification': VERIFICATION.naver } }),
+    },
+  }),
   openGraph: {
     title: 'SKA PRODUCTIONS INC.',
     description: 'KPOP PRIME · 7 ROCK PRIME · SKA SUPER SWAG FESTIVAL — and Korean artist casting for stages worldwide.',
@@ -35,7 +57,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     .then((s) => s.bgm)
     .catch(() => undefined);
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased">
       <head>
         <link
           rel="stylesheet"

@@ -8,6 +8,7 @@ import Intro from '@/components/ska/Intro';
 import Upcoming from '@/components/ska/Upcoming';
 import { isPast } from '@/components/ska/data';
 import NoticePopup from '@/components/ska/NoticePopup';
+import { eventLd, ldJson, organizationLd } from '@/lib/ska-seo';
 import { getSettings, getShows } from '@/lib/ska-store';
 
 export default async function SkaHome() {
@@ -18,6 +19,8 @@ export default async function SkaHome() {
   const past = shows.filter((s) => isPast(s, now)).reverse();
   return (
     <>
+      {/* for search engines: who SKA is, and the upcoming shows as events */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson([organizationLd(), ...upcoming.map(eventLd).filter(Boolean)]) }} />
       <Intro />
       <NoticePopup
         notices={notices}

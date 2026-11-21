@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import ShowDetail from '@/components/ska/ShowDetail';
 import { isPast, type Show } from '@/components/ska/data';
+import { eventLd, ldJson } from '@/lib/ska-seo';
 import { getShow } from '@/lib/ska-store';
 
 /** "Aug 15 – 16, 2025" in the show's own time zone (the date part of its ISO time), or "2027 · Date TBA". */
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${title} — SKA PRODUCTIONS`,
     description,
+    alternates: { canonical: `/shows/${show.slug}` },
     openGraph: { title, description, images, siteName: 'SKA PRODUCTIONS INC.', type: 'website', url: `/shows/${show.slug}` },
     twitter: { card: 'summary_large_image', images: images.map((i) => i.url) },
   };
@@ -37,5 +39,11 @@ export default async function ShowPage({ params }: { params: Promise<{ slug: str
   await connection(); // shows are edited at runtime via /ska/admin
   const show = await getShow(slug);
   if (!show) notFound();
-  return <ShowDetail show={show} past={isPast(show)} />;
+  const ld = eventLd(show);
+  return (
+    <>
+      {ld && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(ld) }} />}
+      <ShowDetail show={show} past={isPast(show)} />
+    </>
+  );
 }

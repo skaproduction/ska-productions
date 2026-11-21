@@ -174,7 +174,7 @@ export default function NoticePopup({ notices, shows = [] }: { notices?: Notice[
     return (
       <Layer>
         <aside
-          className="fixed inset-x-4 bottom-24 z-[80] max-h-[60vh] animate-[ska-sheet_.45s_cubic-bezier(.2,.8,.2,1)] overflow-y-auto rounded-2xl border border-white/15 bg-[#111116]/95 p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,1)] backdrop-blur-xl sm:left-auto sm:right-24 sm:w-[380px] lg:bottom-8"
+          className="fixed inset-x-4 bottom-[8.5rem] z-[80] max-h-[60vh] animate-[ska-sheet_.45s_cubic-bezier(.2,.8,.2,1)] overflow-y-auto rounded-2xl border border-white/15 bg-[#111116]/95 p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,1)] backdrop-blur-xl sm:left-auto sm:right-24 sm:w-[380px] lg:bottom-8"
           role="dialog"
           aria-label="News"
         >

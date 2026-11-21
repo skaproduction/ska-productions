@@ -548,6 +548,50 @@ html:has(.ska) {
   font-weight: 600;
 }
 
+/*
+ * Phones and tablets: the desktop type is small and its grey text faint for a phone screen held
+ * outdoors. Below 1024px the base size grows ~6% (everything in rem scales with it), the smallest
+ * fixed labels get bigger, and grey text gets brighter. Desktop is unchanged.
+ */
+@media (max-width: 1023px) {
+  html {
+    font-size: 106.25%;
+  }
+  .ska .text-\[9px\] {
+    font-size: 11px;
+  }
+  .ska .text-\[10px\] {
+    font-size: 11.5px;
+  }
+  .ska .text-\[11px\] {
+    font-size: 12.5px;
+  }
+  .ska .text-white\/25 {
+    color: rgb(255 255 255 / 45%);
+  }
+  .ska .text-white\/30 {
+    color: rgb(255 255 255 / 50%);
+  }
+  .ska .text-white\/35 {
+    color: rgb(255 255 255 / 58%);
+  }
+  .ska .text-white\/40 {
+    color: rgb(255 255 255 / 62%);
+  }
+  .ska .text-white\/45 {
+    color: rgb(255 255 255 / 66%);
+  }
+  .ska .text-white\/50 {
+    color: rgb(255 255 255 / 70%);
+  }
+  .ska .text-white\/55 {
+    color: rgb(255 255 255 / 74%);
+  }
+  .ska .text-white\/60 {
+    color: rgb(255 255 255 / 78%);
+  }
+}
+
 /* no focus box after a mouse/touch click; keyboard users still get a visible ring */
 .ska :is(button, a, [role='tab']):focus:not(:focus-visible) {
   outline: none;

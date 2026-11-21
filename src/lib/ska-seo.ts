@@ -10,7 +10,7 @@ export const SITE = 'https://www.skaproductions.com';
  * ("HTML 태그"): paste just the content="…" value. They're public — they end up in the page's <head>.
  */
 export const VERIFICATION = {
-  google: process.env.SKA_GOOGLE_VERIFICATION || '',
+  google: process.env.SKA_GOOGLE_VERIFICATION || '0TP948kRRH3Kzubo-Zv7qQTMN6OQQO91utcQMjgFF5c',
   naver: process.env.SKA_NAVER_VERIFICATION || '',
 };
 

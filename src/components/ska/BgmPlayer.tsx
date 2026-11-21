@@ -50,6 +50,9 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
   const order = useRef<number[]>([]);
   const pos = useRef(0);
   const skipping = useRef(false);
+  // a video is playing (news pop-up, promo): music waits, then comes back
+  const ducked = useRef(false);
+  const resume = useRef(false);
 
   const fadeTo = useCallback((target: number, ms: number, done?: () => void) => {
     const a = audio.current;
@@ -87,6 +90,11 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
       if (!a || !bgm) return;
       a.volume = 0;
       return a.play().then(() => {
+        if (ducked.current) {
+          a.pause();
+          resume.current = true;
+          return;
+        }
         setPlaying(true);
         setHint(false);
         fadeTo(bgm.volume, fadeMs);
@@ -168,6 +176,35 @@ export default function BgmPlayer({ bgm }: { bgm?: SiteSettings['bgm'] }) {
     const id = setTimeout(() => setHint(false), 7000);
     return () => clearTimeout(id);
   }, [hint]);
+
+  useEffect(() => {
+    const duck = () => {
+      ducked.current = true;
+      const a = audio.current;
+      if (a && !a.paused) {
+        resume.current = true;
+        fadeTo(0, 400, () => a.pause());
+      }
+    };
+    const unduck = () => {
+      ducked.current = false;
+      const a = audio.current;
+      if (!a || !resume.current) return;
+      resume.current = false;
+      a.play()
+        .then(() => {
+          setPlaying(true);
+          fadeTo(bgm?.volume ?? 0.25, 1500);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('ska:bgm-duck', duck);
+    window.addEventListener('ska:bgm-unduck', unduck);
+    return () => {
+      window.removeEventListener('ska:bgm-duck', duck);
+      window.removeEventListener('ska:bgm-unduck', unduck);
+    };
+  }, [fadeTo, bgm?.volume]);
 
   // pause in background tabs, resume on return
   useEffect(() => {

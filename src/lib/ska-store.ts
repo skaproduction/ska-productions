@@ -4,7 +4,7 @@ import { revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Track, type Zone } from '@/components/ska/data';
+import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type Notice, type SiteSettings, type Track, type Zone, youtubeId } from '@/components/ska/data';
 
 // Two storage backends behind one API:
 // - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). Every save writes the whole
@@ -268,6 +268,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     title: str(r.title, 60, 'title', true),
     edition: str(r.edition, 60, 'edition'),
     ...(r.dateTBA === true && { dateTBA: true }),
+    ...(youtubeId(r.promoVideo as string) && { promoVideo: youtubeId(r.promoVideo as string)! }),
     city: loc(r.city, 60, 'city'),
     country: loc(r.country, 60, 'country'),
     venue: loc(r.venue, 120, 'venue'),
@@ -303,7 +304,9 @@ const MAX_TRACKS = 20;
 export function saveSettings(raw: unknown) {
   return locked(async () => {
     const prev = await getSettings({ fresh: true });
-    const r = (raw ?? {}) as { bgm?: Record<string, unknown> | null };
+    const r = (raw ?? {}) as { bgm?: Record<string, unknown> | null; notices?: unknown };
+    // each admin card saves only its own part (music or notices); the other part is kept as is
+    const hasBgm = 'bgm' in r;
     const tracks = (Array.isArray(r.bgm?.tracks) ? r.bgm.tracks : [])
       .slice(0, MAX_TRACKS)
       .map((t: Record<string, unknown>, i): Track | null => {
@@ -314,16 +317,16 @@ export function saveSettings(raw: unknown) {
       })
       .filter((t): t is Track => !!t);
     const vol = Number(r.bgm?.volume);
-    const next: SiteSettings = {
-      bgm: tracks.length
-        ? {
-            tracks,
-            volume: Number.isFinite(vol) ? Math.min(0.8, Math.max(0.05, Math.round(vol * 100) / 100)) : 0.25,
-            enabled: r.bgm?.enabled !== false,
-            shuffle: r.bgm?.shuffle === true,
-          }
-        : undefined,
-    };
+    const bgm = tracks.length
+      ? {
+          tracks,
+          volume: Number.isFinite(vol) ? Math.min(0.8, Math.max(0.05, Math.round(vol * 100) / 100)) : 0.25,
+          enabled: r.bgm?.enabled !== false,
+          shuffle: r.bgm?.shuffle === true,
+        }
+      : undefined;
+    const notices = 'notices' in r ? normalizeNotices(r.notices) : prev.notices;
+    const next: SiteSettings = { bgm: hasBgm ? bgm : prev.bgm, ...(notices?.length && { notices }) };
     const json = JSON.stringify(next, null, 2);
     if (useBlob()) {
       await writeJsonBlob(BLOB_SETTINGS, json);
@@ -332,10 +335,47 @@ export function saveSettings(raw: unknown) {
       await mkdir(ROOT, { recursive: true });
       await writeFile(SETTINGS_FILE, json);
     }
-    const kept = new Set(tracks.map((t) => t.url));
-    for (const t of prev.bgm?.tracks ?? []) if (!kept.has(t.url)) await deleteImage(t.url);
+    if (hasBgm) {
+      const kept = new Set(tracks.map((t) => t.url));
+      for (const t of prev.bgm?.tracks ?? []) if (!kept.has(t.url)) await deleteImage(t.url);
+    }
     return next;
   });
+}
+
+const MAX_NOTICES = 12;
+
+function normalizeNotices(v: unknown): Notice[] {
+  const link = (u: unknown) => {
+    const s = typeof u === 'string' ? u.trim() : '';
+    if (!s) return undefined;
+    if (/^\/[^/]/.test(s) || s === '/') return s.slice(0, 300); // a page on this site
+    try {
+      const url = new URL(s);
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString().slice(0, 500) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  return (Array.isArray(v) ? v : [])
+    .slice(0, MAX_NOTICES)
+    .map((n: Record<string, unknown>, i): Notice => {
+      const video = youtubeId(n?.video as string) ?? undefined;
+      const body = loc(n?.body, 600, 'body');
+      const linkLabel = loc(n?.linkLabel, 40, 'linkLabel');
+      const until = typeof n?.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(n.until) ? n.until : undefined;
+      return {
+        id: str(n?.id, 40, 'notice') || `n${i}-${randomBytes(3).toString('hex')}`,
+        kind: n?.kind === 'video' ? 'video' : 'notice',
+        title: loc(n?.title, 120, 'title'),
+        ...((body.en || body.ko) && { body }),
+        ...(video && { video }),
+        ...(link(n?.link) && { link: link(n?.link) }),
+        ...((linkLabel.en || linkLabel.ko) && { linkLabel }),
+        on: n?.on !== false,
+        ...(until && { until }),
+      };
+    });
 }
 
 /* ---------- images & audio ---------- */

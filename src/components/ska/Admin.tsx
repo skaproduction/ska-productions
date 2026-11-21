@@ -4,8 +4,10 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone } from './data';
+import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, youtubeId } from './data';
 import MusicSettings from './MusicSettings';
+import NoticeSettings from './NoticeSettings';
+import { youtubeThumb } from './Video';
 import VisitorStats from './VisitorStats';
 import SeatMapEditor from './SeatMapEditor';
 import { Arrow, Layer, Poster, fmtDate, useLang } from './ui';
@@ -141,6 +143,8 @@ type Draft = {
   lineup: Artist[];
   gallery: Photo[];
   timetableImages: Photo[];
+  /** YouTube link as typed */
+  promoVideo: string;
   seatMap?: string;
   zones: Zone[];
 };
@@ -169,6 +173,7 @@ function toDraft(show?: Show, past = false): Draft {
       lineup: [],
       gallery: [],
       timetableImages: [],
+      promoVideo: '',
       zones: ZONES.map((z) => ({ ...z })),
     };
   }
@@ -190,6 +195,7 @@ function toDraft(show?: Show, past = false): Draft {
     lineup: show.lineup.map((a) => ({ ...a })),
     gallery: (show.gallery ?? []).map((p) => ({ ...p })),
     timetableImages: (show.timetableImages ?? []).map((p) => ({ ...p })),
+    promoVideo: show.promoVideo ? `https://youtu.be/${show.promoVideo}` : '',
     seatMap: show.seatMap,
     zones: show.zones.map((z) => ({ ...z, tier: { ...z.tier } })),
   };
@@ -217,6 +223,7 @@ const fromDraft = (d: Draft) => ({
   lineup: d.lineup,
   gallery: d.gallery,
   timetableImages: d.timetableImages,
+  promoVideo: youtubeId(d.promoVideo) ?? undefined,
   seatMap: d.seatMap,
   zones: d.zones,
 });
@@ -296,6 +303,8 @@ export function AdminDashboard({
         <VisitorStats shows={shows} />
 
         <MusicSettings settings={settings} upload={uploadMedia} onToast={setToast} />
+
+        <NoticeSettings settings={settings} onToast={setToast} />
 
         <div className="mt-12 flex gap-1 border-b border-white/10">
           {(
@@ -673,6 +682,11 @@ function ShowEditor({
             />
           </Group>
 
+          {/* promo video */}
+          <Group title={t({ en: 'Promo video', ko: '프로모 영상' })}>
+            <PromoField value={d.promoVideo} onChange={(v) => set('promoVideo', v)} />
+          </Group>
+
           {/* lineup */}
           <Group
             title={t({ en: 'Lineup', ko: '라인업' })}
@@ -714,6 +728,37 @@ function ShowEditor({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PromoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useLang();
+  const id = youtubeId(value);
+  return (
+    <div>
+      <p className="-mt-2 mb-4 text-xs text-white/45">
+        {t({
+          en: 'Paste a YouTube link. Before the show it plays from the show page and its card under Upcoming; once the show is over it moves to the show’s After Show tab by itself.',
+          ko: '유튜브 링크를 붙여넣으세요. 공연 전에는 공연 페이지와 예정 공연 카드에서 재생되고, 공연이 끝나면 자동으로 그 공연의 After Show 탭으로 옮겨져 보관됩니다.',
+        })}
+      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input className="ska-input flex-1" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" inputMode="url" />
+        {value && (
+          <button type="button" onClick={() => onChange('')} className="ska-btn ska-btn-ghost !py-2 !text-xs text-red-300">
+            {t({ en: 'Remove', ko: '삭제' })}
+          </button>
+        )}
+      </div>
+      {value && !id && <p className="mt-2 text-xs text-amber-300">{t({ en: 'That doesn’t look like a YouTube link.', ko: '유튜브 링크가 아닌 것 같아요.' })}</p>}
+      {id && (
+        <a href={`https://youtu.be/${id}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-3 rounded-xl border border-white/10 p-1.5 pr-4 text-xs text-white/70 hover:border-white/40">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={youtubeThumb(id)} alt="" className="h-12 w-20 rounded-lg object-cover" />
+          ✓ {t({ en: 'Video found — open on YouTube', ko: '영상 확인됨 — 유튜브에서 열기' })} ↗
+        </a>
+      )}
     </div>
   );
 }

@@ -2,10 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { artistDay, brandById, showDays, type Brand, type L, type Photo, type Show } from './data';
 import AfterShow, { Lightbox } from './AfterShow';
 import SeatMap from './SeatMap';
+import { VideoModal, YouTube, youtubeThumb } from './Video';
 import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, useLang } from './ui';
 
 const AFTER_SHOW = { id: 'aftershow', label: { en: 'After Show', ko: 'After Show' } };
@@ -21,9 +22,14 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
   const b = brandById(show.brand);
   const { t, lang } = useLang();
   const photos = show.gallery ?? [];
-  // past shows lead with their photos; upcoming shows only get the tab once photos exist
-  const tabs = photos.length ? (past ? [AFTER_SHOW, ...TABS] : [...TABS, AFTER_SHOW]) : TABS;
-  const [tab, setTab] = useState(past && photos.length ? 'aftershow' : 'lineup');
+  // once a show is over its promo video moves to the After Show tab, next to the photos
+  const archive = past && !!show.promoVideo;
+  const hasAfter = photos.length > 0 || archive;
+  // past shows lead with After Show; upcoming shows only get the tab once photos exist
+  const tabs = hasAfter ? (past ? [AFTER_SHOW, ...TABS] : [...TABS, AFTER_SHOW]) : TABS;
+  const [tab, setTab] = useState(past && hasAfter ? 'aftershow' : 'lineup');
+  const [promo, setPromo] = useState(false);
+  const closePromo = useCallback(() => setPromo(false), []);
   const openPhotos = () => {
     setTab('aftershow');
     document.querySelector('[role=tablist]')?.scrollIntoView({ behavior: 'smooth' });
@@ -81,6 +87,25 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
                     <Countdown to={show.start} tba={show.dateTBA} size="lg" />
                   </div>
                   <Notify show={show} brand={b} />
+                  {show.promoVideo && (
+                    <button onClick={() => setPromo(true)} className="group mt-6 flex items-center gap-4 text-left">
+                      <span className="relative h-16 w-28 overflow-hidden rounded-xl ring-1 ring-white/15">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={youtubeThumb(show.promoVideo)} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm text-black" style={{ background: b.accent }}>
+                            ▶
+                          </span>
+                        </span>
+                      </span>
+                      <span className="text-sm">
+                        <span className="block font-semibold" style={{ color: b.accent }}>
+                          {t({ en: 'Promo video', ko: '프로모 영상' })}
+                        </span>
+                        <span className="text-white/50">{t({ en: 'Watch the trailer →', ko: '영상 보기 →' })}</span>
+                      </span>
+                    </button>
+                  )}
                 </>
               )}
               {photos.length > 0 && (
@@ -107,6 +132,8 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
           </div>
         </div>
       </section>
+
+      {promo && show.promoVideo && <VideoModal id={show.promoVideo} title={`${show.title} ${show.edition}`} accent={b.accent} onClose={closePromo} />}
 
       {/* tabs */}
       <div className="sticky top-16 z-30 border-y border-white/[0.06] bg-black/75 backdrop-blur-xl sm:top-20">
@@ -135,7 +162,18 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
           {tab === 'timetable' && <Timetable show={show} brand={b} />}
           {tab === 'venue' && <SeatMap show={show} brand={b} />}
           {tab === 'info' && <Info />}
-          {tab === 'aftershow' && <AfterShow photos={photos} brand={b} />}
+          {tab === 'aftershow' && (
+            <>
+              {archive && (
+                <div className={photos.length ? 'mb-16' : ''}>
+                  <h3 className="ska-display text-4xl">{t({ en: 'Promo video', ko: '프로모 영상' })}</h3>
+                  <p className="mt-2 text-sm text-white/50">{t({ en: 'The video that announced the show.', ko: '공연을 알린 프로모 영상입니다.' })}</p>
+                  <YouTube id={show.promoVideo!} title={`${show.title} ${show.edition}`} className="mt-6 ring-1 ring-white/10" />
+                </div>
+              )}
+              {photos.length > 0 && <AfterShow photos={photos} brand={b} />}
+            </>
+          )}
         </div>
       </section>
 

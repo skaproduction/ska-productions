@@ -92,6 +92,8 @@ export type Show = {
   venue: L;
   start: string; // ISO date, local show time
   end?: string;
+  /** YouTube video id of the promo video: on the show page while upcoming, in After Show once it's over. */
+  promoVideo?: string;
   /** Date not fixed yet: `start` is a placeholder at the end of the edition year, shown as "2027 · Date TBA". */
   dateTBA?: boolean;
   poster?: string;
@@ -264,7 +266,35 @@ export const STATS = [
 export type SiteSettings = {
   /** Background music playlist: starts softly when a visitor enters through the intro; visitors can toggle it or skip. */
   bgm?: { tracks: Track[]; volume: number; enabled: boolean; shuffle: boolean };
+  /** Pop-up news on the homepage: videos open first as a big player, then text notices slide in. */
+  notices?: Notice[];
 };
+
+export type Notice = {
+  id: string;
+  kind: 'video' | 'notice';
+  title: L;
+  body?: L;
+  /** YouTube video id (kind "video") */
+  video?: string;
+  link?: string;
+  linkLabel?: L;
+  on: boolean;
+  /** last day it's shown, YYYY-MM-DD (Korean time); none = until switched off */
+  until?: string;
+};
+
+/** The 11-character id from any YouTube link (watch, youtu.be, shorts, embed, live) or a bare id. */
+export function youtubeId(v: string | undefined | null): string | null {
+  const s = (v ?? '').trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+/** Notices switched on and not past their last day (dates in Korean time). */
+export const liveNotices = (ns: Notice[] | undefined, today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })) =>
+  (ns ?? []).filter((n) => n.on && (!n.until || n.until >= today) && (n.kind !== 'video' || n.video));
 
 /** `off`: kept in the playlist but not played on the site. */
 export type Track = { id: string; url: string; title?: string; off?: boolean };

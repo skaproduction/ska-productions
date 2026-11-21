@@ -7,17 +7,19 @@ import History from '@/components/ska/History';
 import Intro from '@/components/ska/Intro';
 import Upcoming from '@/components/ska/Upcoming';
 import { isPast } from '@/components/ska/data';
-import { getShows } from '@/lib/ska-store';
+import NoticePopup from '@/components/ska/NoticePopup';
+import { getSettings, getShows } from '@/lib/ska-store';
 
 export default async function SkaHome() {
   await connection(); // shows are edited at runtime via /ska/admin
-  const shows = await getShows();
+  const [shows, notices] = await Promise.all([getShows(), getSettings().then((s) => s.notices).catch(() => undefined)]);
   const now = Date.now();
   const upcoming = shows.filter((s) => !isPast(s, now));
   const past = shows.filter((s) => isPast(s, now)).reverse();
   return (
     <>
       <Intro />
+      <NoticePopup notices={notices} />
       <main>
         <Hero />
         <Brands shows={upcoming} past={past} />

@@ -54,6 +54,8 @@ export default function Intro() {
     const id = setTimeout(() => {
       document.documentElement.style.overflow = '';
       setPhase('hidden');
+      // the homepage news pop-up waits for this
+      window.dispatchEvent(new Event('ska:intro-done'));
     }, 1000);
     return () => clearTimeout(id);
   }, [phase]);

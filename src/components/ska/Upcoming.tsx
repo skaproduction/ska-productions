@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BRANDS, brandById, type BrandId, type Show } from './data';
+import { VideoModal, youtubeThumb } from './Video';
 import { Arrow, Countdown, Poster, Reveal, SwipeDots, Tilt, dday, fmtDate, useLang, useNow, useSnapIndex } from './ui';
 
 type Filter = BrandId | 'all';
@@ -13,6 +14,8 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
   const [view, setView] = useState<'cards' | 'timeline'>('cards');
   const now = useNow(60_000);
   const row = useSnapIndex<HTMLDivElement>();
+  const [promo, setPromo] = useState<Show | null>(null);
+  const closePromo = useCallback(() => setPromo(null), []);
 
   useEffect(() => {
     const on = (e: Event) => setFilter((e as CustomEvent<Filter>).detail);
@@ -96,6 +99,25 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
                         >
                           {dday(s.start, now, s.dateTBA)}
                         </span>
+                        {s.promoVideo && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPromo(s);
+                            }}
+                            className="absolute bottom-4 left-4 right-4 flex items-center gap-3 overflow-hidden rounded-xl border border-white/20 bg-black/70 p-1.5 pr-4 text-left backdrop-blur-md transition hover:border-white hover:bg-black/85"
+                            style={{ transform: 'translateZ(50px)' }}
+                            aria-label={t({ en: 'Watch the promo video', ko: '프로모 영상 보기' })}
+                          >
+                            <span className="relative h-11 w-[72px] shrink-0 overflow-hidden rounded-lg">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={youtubeThumb(s.promoVideo)} alt="" className="h-full w-full object-cover" />
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-sm">▶</span>
+                            </span>
+                            <span className="text-xs font-semibold">{t({ en: 'Watch promo video', ko: '프로모 영상 보기' })}</span>
+                          </button>
+                        )}
                       </div>
                     </Tilt>
                     <div className="mt-5 flex items-start justify-between gap-4">
@@ -123,6 +145,9 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
             })}
           </div>
           <SwipeDots count={shows.length} index={row.index} onPick={row.go} colors={shows.map((s) => brandById(s.brand).accent)} className="sm:hidden" />
+          {promo?.promoVideo && (
+            <VideoModal id={promo.promoVideo} title={`${promo.title} ${promo.edition}`} accent={brandById(promo.brand).accent} onClose={closePromo} />
+          )}
           </>
         ) : (
           <Timeline shows={shows} />

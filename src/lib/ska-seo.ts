@@ -11,7 +11,7 @@ export const SITE = 'https://www.skaproductions.com';
  */
 export const VERIFICATION = {
   google: process.env.SKA_GOOGLE_VERIFICATION || '0TP948kRRH3Kzubo-Zv7qQTMN6OQQO91utcQMjgFF5c',
-  naver: process.env.SKA_NAVER_VERIFICATION || '',
+  naver: process.env.SKA_NAVER_VERIFICATION || '36848907a8ea98b0daab3025b445eeb8351e564a',
 };
 
 const abs = (u?: string) => (!u ? undefined : u.startsWith('/') ? SITE + u : u);

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { liveNotices, type Notice, type NoticeShow } from './data';
+import { findBySlug, liveNotices, type Notice, type NoticeShow } from './data';
 import { Arrow, Layer, useLang } from './ui';
 import { Player, duckMusic } from './Video';
 
@@ -101,7 +101,7 @@ export default function NoticePopup({ notices, shows = [] }: { notices?: Notice[
 
   // buttons: the show it's about (and its tickets while on sale), then any extra link
   const CTA = ({ n }: { n: Notice }) => {
-    const s = n.show ? shows.find((x) => x.slug === n.show) : undefined;
+    const s = findBySlug(shows, n.show);
     const tickets = s && !s.past ? s.ticketUrl : undefined;
     if (!s && !n.link) return null;
     return (

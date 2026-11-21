@@ -4,7 +4,7 @@ import { revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type Notice, type SiteSettings, type Track, type Zone, youtubeId } from '@/components/ska/data';
+import { BRANDS, DEFAULT_SHOWS, ZONES, type Artist, type BrandId, type L, type Photo, type Show, type Notice, type SiteSettings, type Track, type Zone, toSlug, youtubeId } from '@/components/ska/data';
 
 // Two storage backends behind one API:
 // - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production on Vercel). Every save writes the whole
@@ -153,12 +153,19 @@ const imagesOf = (s?: Show) =>
 export function saveShow(raw: unknown) {
   return locked(async () => {
     const shows = await getShows({ fresh: true });
-    const input = normalizeShow(raw);
+    const { newSlug, ...input } = normalizeShow(raw);
     const i = shows.findIndex((s) => s.slug === input.slug);
     const prev = i >= 0 ? shows[i] : undefined;
+    const others = shows.filter((_, n) => n !== i);
+    // a new page address must not be in use (now or before) by another show
+    if (newSlug && others.some((s) => s.slug === newSlug || s.oldSlugs?.includes(newSlug))) throw new InvalidShow('slug_taken');
+    const slug = newSlug ?? prev?.slug ?? uniqueSlug(input, shows);
+    // the old address keeps redirecting here
+    const oldSlugs = [...new Set([...(prev?.oldSlugs ?? []), ...(prev && prev.slug !== slug ? [prev.slug] : [])])].filter((x) => x !== slug);
     const show: Show = {
       ...input,
-      slug: prev?.slug ?? uniqueSlug(input, shows),
+      slug,
+      ...(oldSlugs.length && { oldSlugs }),
       // the timetable isn't edited in the admin yet, so keep what's there
       stages: prev?.stages ?? [],
       zones: input.zones ?? prev?.zones ?? ZONES,
@@ -191,7 +198,7 @@ function uniqueSlug(s: Pick<Show, 'title' | 'edition'>, shows: Show[]) {
       .replace(/^-|-$/g, '')
       .slice(0, 60) || 'show';
   let slug = base;
-  for (let n = 2; shows.some((x) => x.slug === slug); n++) slug = `${base}-${n}`;
+  for (let n = 2; shows.some((x) => x.slug === slug || x.oldSlugs?.includes(slug)); n++) slug = `${base}-${n}`;
   return slug;
 }
 
@@ -236,7 +243,7 @@ const media = (v: unknown) => {
   return local || BLOB_MEDIA_RE.test(s) ? s : undefined;
 };
 
-function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?: Zone[] } {
+function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?: Zone[]; newSlug?: string } {
   const r = (raw ?? {}) as Record<string, unknown>;
   const brand = r.brand as BrandId;
   if (!BRANDS.some((b) => b.id === brand)) throw new InvalidShow('bad_brand');
@@ -281,6 +288,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     : undefined;
   return {
     slug: str(r.slug, 80, 'slug'),
+    ...(typeof r.newSlug === 'string' && toSlug(r.newSlug).length >= 3 && { newSlug: toSlug(r.newSlug) }),
     brand,
     title: str(r.title, 60, 'title', true),
     edition: str(r.edition, 60, 'edition'),

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { connection } from 'next/server';
 import ShowDetail from '@/components/ska/ShowDetail';
-import { isPast, type Show } from '@/components/ska/data';
+import { findBySlug, isPast, type Show } from '@/components/ska/data';
 import { eventLd, ldJson } from '@/lib/ska-seo';
-import { getShow } from '@/lib/ska-store';
+import { getShows } from '@/lib/ska-store';
 
 /** "Aug 15 – 16, 2025" in the show's own time zone (the date part of its ISO time), or "2027 · Date TBA". */
 function previewDate(s: Show) {
@@ -17,7 +17,7 @@ function previewDate(s: Show) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const show = await getShow(slug);
+  const show = findBySlug(await getShows(), slug);
   if (!show) return { title: 'SKA PRODUCTIONS' };
   const title = `${show.title} ${show.edition}`.trim();
   const when = previewDate(show);
@@ -37,8 +37,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ShowPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   await connection(); // shows are edited at runtime via /ska/admin
-  const show = await getShow(slug);
+  const show = findBySlug(await getShows(), slug);
   if (!show) notFound();
+  // an address the show had before: send visitors (and search engines) to the current one
+  if (show.slug !== slug) permanentRedirect(`/shows/${show.slug}`);
   const ld = eventLd(show);
   return (
     <>

@@ -93,6 +93,8 @@ export type Show = {
   venue: L;
   start: string; // ISO date, local show time
   end?: string;
+  /** Earlier page addresses; visiting one redirects to the current slug, so shared links keep working. */
+  oldSlugs?: string[];
   /** Where to buy tickets (each show has its own); shown until the show is over. */
   ticketUrl?: string;
   /** Promo video — an uploaded file's URL or a YouTube id: on the show page while upcoming, in After Show once it's over. */
@@ -298,7 +300,19 @@ export function youtubeId(v: string | undefined | null): string | null {
 }
 
 /** What the news pop-up needs to know about a show a notice is about. */
-export type NoticeShow = { slug: string; title: string; edition: string; ticketUrl?: string; past: boolean };
+export type NoticeShow = { slug: string; oldSlugs?: string[]; title: string; edition: string; ticketUrl?: string; past: boolean };
+
+/** Lowercase letters, digits and dashes only — the form a page address (slug) takes. */
+export const toSlug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+
+/** The show a slug points at: its current address or one it had before. */
+export const findBySlug = <T extends { slug: string; oldSlugs?: string[] }>(shows: T[], slug?: string) =>
+  slug ? (shows.find((s) => s.slug === slug) ?? shows.find((s) => s.oldSlugs?.includes(slug))) : undefined;
 
 /** What a stored video points at: an uploaded file (URL) or a YouTube video (id). */
 export function videoSrc(v: string | undefined | null): { file: string } | { youtube: string } | null {

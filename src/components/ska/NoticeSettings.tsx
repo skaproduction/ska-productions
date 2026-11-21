@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { isPast, videoSrc, type L, type Notice, type Show, type SiteSettings } from './data';
+import { findBySlug, isPast, videoSrc, type L, type Notice, type Show, type SiteSettings } from './data';
 import { useLang } from './ui';
 import { VideoField } from './Video';
 
@@ -143,7 +143,7 @@ export default function NoticeSettings({ settings, shows, upload, onToast }: { s
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <span className="shrink-0 text-xs text-white/55 sm:w-24">{t({ en: 'About show', ko: '관련 공연' })}</span>
-                  <select className="ska-input flex-1 [color-scheme:dark]" value={n.show ?? ''} onChange={(e) => pickShow(n, e.target.value)}>
+                  <select className="ska-input flex-1 [color-scheme:dark]" value={findBySlug(shows, n.show)?.slug ?? n.show ?? ''} onChange={(e) => pickShow(n, e.target.value)}>
                     <option value="">{t({ en: '— none —', ko: '— 선택 안 함 —' })}</option>
                     {upcoming.length > 0 && (
                       <optgroup label={t({ en: 'Upcoming', ko: '예정 공연' })}>
@@ -168,7 +168,7 @@ export default function NoticeSettings({ settings, shows, upload, onToast }: { s
                 </div>
                 {n.show &&
                   (() => {
-                    const s = shows.find((x) => x.slug === n.show);
+                    const s = findBySlug(shows, n.show);
                     if (!s) return <p className="-mt-1 text-xs text-amber-300">{t({ en: 'That show was deleted — pick another.', ko: '삭제된 공연이에요. 다시 골라주세요.' })}</p>;
                     return (
                       <p className="-mt-1 text-xs text-white/45">

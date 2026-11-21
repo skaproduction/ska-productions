@@ -4,7 +4,7 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, videoSrc } from './data';
+import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, toSlug, videoSrc } from './data';
 import MusicSettings from './MusicSettings';
 import NoticeSettings from './NoticeSettings';
 import { VideoField } from './Video';
@@ -148,6 +148,8 @@ const TIMEZONES = [
 
 type Draft = {
   slug: string;
+  /** page address as edited (skaproductions.com/shows/…) */
+  newSlug: string;
   brand: BrandId;
   title: string;
   edition: string;
@@ -180,6 +182,7 @@ function toDraft(show?: Show, past = false): Draft {
     const d = new Date(Date.now() + (past ? -365 : 60) * 864e5);
     return {
       slug: '',
+      newSlug: '',
       brand: 'kpop',
       title: brandById('kpop').name,
       edition: String(d.getFullYear()),
@@ -202,6 +205,7 @@ function toDraft(show?: Show, past = false): Draft {
   const [, date = '', time = '18:00', tz = '+09:00'] = show.start.match(ISO_RE) ?? [];
   return {
     slug: show.slug,
+    newSlug: show.slug,
     brand: show.brand,
     title: show.title,
     edition: show.edition,
@@ -232,6 +236,7 @@ const tbaYear = (edition: string) => {
 
 const fromDraft = (d: Draft) => ({
   slug: d.slug || undefined,
+  ...(toSlug(d.newSlug) && toSlug(d.newSlug) !== d.slug && { newSlug: toSlug(d.newSlug) }),
   brand: d.brand,
   title: d.title,
   edition: d.edition,
@@ -440,6 +445,7 @@ const SAVE_ERRORS: Record<string, L> = {
   bad_start: { en: 'Check the start date and time.', ko: '시작 날짜와 시간을 확인해주세요.' },
   bad_end: { en: 'Check the end date.', ko: '종료 날짜를 확인해주세요.' },
   end_before_start: { en: 'End date is before the start date.', ko: '종료일이 시작일보다 빠릅니다.' },
+  slug_taken: { en: 'That page address is already used by another show.', ko: '다른 공연이 이미 쓰고 있는 주소예요.' },
 };
 
 function ShowEditor({
@@ -597,6 +603,34 @@ function ShowEditor({
               </Field>
               <Field label={t({ en: 'Edition / subtitle', ko: '회차 / 부제' })}>
                 <input className="ska-input" value={d.edition} onChange={(e) => set('edition', e.target.value)} placeholder="2027 in TAIPEI" />
+              </Field>
+              <Field label={t({ en: 'Page address', ko: '페이지 주소' })} className="sm:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex flex-1 items-center rounded-xl border border-white/10 bg-white/[0.03] pl-3 focus-within:border-white/40">
+                    <span className="shrink-0 text-sm text-white/40">skaproductions.com/shows/</span>
+                    <input
+                      className="min-w-0 flex-1 bg-transparent py-3 pr-3 text-sm outline-none"
+                      value={d.newSlug}
+                      onChange={(e) => set('newSlug', e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+                      placeholder={t({ en: 'made from the title if left empty', ko: '비워두면 제목으로 자동 생성' })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => set('newSlug', toSlug([d.title, d.edition, d.city.en].filter(Boolean).join(' ')))}
+                    className="ska-btn ska-btn-ghost shrink-0 !py-2 !text-xs"
+                  >
+                    {t({ en: 'Suggest from title', ko: '제목으로 추천' })}
+                  </button>
+                </div>
+                <span className="mt-1.5 block text-[11px] text-white/40">
+                  {d.slug && toSlug(d.newSlug) && toSlug(d.newSlug) !== d.slug
+                    ? t({
+                        en: `Links to the old address (/shows/${d.slug}) will keep working and move here.`,
+                        ko: `예전 주소(/shows/${d.slug})로 들어와도 새 주소로 자동 이동해요.`,
+                      })
+                    : t({ en: 'English letters, numbers and dashes. Shown in search results and shared links.', ko: '영문 소문자·숫자·하이픈(-)만 써요. 검색 결과와 공유 링크에 보여요.' })}
+                </span>
               </Field>
             </div>
           </Group>

@@ -19,7 +19,10 @@ export default async function SkaHome() {
   return (
     <>
       <Intro />
-      <NoticePopup notices={notices} />
+      <NoticePopup
+        notices={notices}
+        shows={shows.map((s) => ({ slug: s.slug, title: s.title, edition: s.edition, ticketUrl: s.ticketUrl, past: isPast(s, now) }))}
+      />
       <main>
         <Hero />
         <Brands shows={upcoming} past={past} />

@@ -165,6 +165,7 @@ type Draft = {
   timetableImages: Photo[];
   /** YouTube link as typed */
   promoVideo: string;
+  ticketUrl: string;
   seatMap?: string;
   zones: Zone[];
 };
@@ -194,6 +195,7 @@ function toDraft(show?: Show, past = false): Draft {
       gallery: [],
       timetableImages: [],
       promoVideo: '',
+      ticketUrl: '',
       zones: ZONES.map((z) => ({ ...z })),
     };
   }
@@ -215,6 +217,7 @@ function toDraft(show?: Show, past = false): Draft {
     lineup: show.lineup.map((a) => ({ ...a })),
     gallery: (show.gallery ?? []).map((p) => ({ ...p })),
     timetableImages: (show.timetableImages ?? []).map((p) => ({ ...p })),
+    ticketUrl: show.ticketUrl ?? '',
     // uploaded files keep their URL; a YouTube id is shown as a link
     promoVideo: !show.promoVideo ? '' : videoSrc(show.promoVideo) && 'file' in videoSrc(show.promoVideo)! ? show.promoVideo : `https://youtu.be/${show.promoVideo}`,
     seatMap: show.seatMap,
@@ -245,6 +248,7 @@ const fromDraft = (d: Draft) => ({
   gallery: d.gallery,
   timetableImages: d.timetableImages,
   promoVideo: d.promoVideo.trim() || undefined,
+  ticketUrl: d.ticketUrl.trim() || undefined,
   seatMap: d.seatMap,
   zones: d.zones,
 });
@@ -325,7 +329,7 @@ export function AdminDashboard({
 
         <MusicSettings settings={settings} upload={uploadMedia} onToast={setToast} />
 
-        <NoticeSettings settings={settings} upload={uploadMedia} onToast={setToast} />
+        <NoticeSettings settings={settings} shows={shows} upload={uploadMedia} onToast={setToast} />
 
         <div className="mt-12 flex gap-1 border-b border-white/10">
           {(
@@ -701,6 +705,26 @@ function ShowEditor({
               onError={onError}
               slug={d.slug || d.title}
             />
+          </Group>
+
+          {/* tickets */}
+          <Group title={t({ en: 'Tickets', ko: '티켓 예매' })}>
+            <p className="-mt-2 mb-4 text-xs text-white/45">
+              {t({
+                en: 'Paste this show’s ticket page (Interpark, KKTIX, Ticketmaster…). A “Buy tickets” button then appears on the show page, its Upcoming card and any homepage news about it — and disappears by itself once the show is over.',
+                ko: '이 공연의 예매 페이지 주소를 넣으세요 (인터파크, KKTIX, 티켓마스터 등). 공연 페이지, 예정 공연 카드, 이 공연 관련 홈페이지 공지에 "티켓 예매" 버튼이 생기고, 공연이 끝나면 자동으로 사라져요.',
+              })}
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input className="ska-input flex-1" value={d.ticketUrl} onChange={(e) => set('ticketUrl', e.target.value)} placeholder="https://tickets.example.com/…" inputMode="url" />
+              {/^https?:\/\/\S+\.\S+/.test(d.ticketUrl.trim()) ? (
+                <a href={d.ticketUrl.trim()} target="_blank" rel="noopener noreferrer" className="ska-btn ska-btn-ghost !py-2 !text-xs">
+                  {t({ en: 'Test link', ko: '링크 확인' })} ↗
+                </a>
+              ) : (
+                d.ticketUrl.trim() && <span className="text-xs text-amber-300">{t({ en: 'Use a full address starting with https://', ko: 'https:// 로 시작하는 전체 주소를 넣어주세요' })}</span>
+              )}
+            </div>
           </Group>
 
           {/* promo video */}

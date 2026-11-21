@@ -215,6 +215,19 @@ const iso = (v: unknown, field: string, required: boolean) => {
     throw new InvalidShow(`bad_${field}`);
   return s;
 };
+/** An http(s) address, or a page on this site ("/shows/…"). */
+const linkUrl = (u: unknown, local = true) => {
+  const s = typeof u === 'string' ? u.trim() : '';
+  if (!s) return undefined;
+  if (local && (/^\/[^/]/.test(s) || s === '/')) return s.slice(0, 300);
+  try {
+    const url = new URL(s);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString().slice(0, 500) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 /** A promo / news video: an uploaded file's URL or a YouTube video id. */
 const videoRef = (v: unknown) => media(v) ?? youtubeId(typeof v === 'string' ? v : '') ?? undefined;
 const media = (v: unknown) => {
@@ -273,6 +286,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     edition: str(r.edition, 60, 'edition'),
     ...(r.dateTBA === true && { dateTBA: true }),
     ...(videoRef(r.promoVideo) && { promoVideo: videoRef(r.promoVideo)! }),
+    ...(linkUrl(r.ticketUrl, false) && { ticketUrl: linkUrl(r.ticketUrl, false)! }),
     city: loc(r.city, 60, 'city'),
     country: loc(r.country, 60, 'country'),
     venue: loc(r.venue, 120, 'venue'),
@@ -355,17 +369,7 @@ export function saveSettings(raw: unknown) {
 const MAX_NOTICES = 12;
 
 function normalizeNotices(v: unknown): Notice[] {
-  const link = (u: unknown) => {
-    const s = typeof u === 'string' ? u.trim() : '';
-    if (!s) return undefined;
-    if (/^\/[^/]/.test(s) || s === '/') return s.slice(0, 300); // a page on this site
-    try {
-      const url = new URL(s);
-      return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString().slice(0, 500) : undefined;
-    } catch {
-      return undefined;
-    }
-  };
+  const link = (u: unknown) => linkUrl(u);
   return (Array.isArray(v) ? v : [])
     .slice(0, MAX_NOTICES)
     .map((n: Record<string, unknown>, i): Notice => {
@@ -376,6 +380,7 @@ function normalizeNotices(v: unknown): Notice[] {
       return {
         id: str(n?.id, 40, 'notice') || `n${i}-${randomBytes(3).toString('hex')}`,
         kind: n?.kind === 'video' ? 'video' : 'notice',
+        ...(typeof n?.show === 'string' && /^[a-z0-9-]{1,80}$/.test(n.show) && { show: n.show }),
         title: loc(n?.title, 120, 'title'),
         ...((body.en || body.ko) && { body }),
         ...(video && { video }),

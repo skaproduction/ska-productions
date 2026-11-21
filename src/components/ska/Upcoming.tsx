@@ -135,8 +135,21 @@ export default function Upcoming({ shows: all }: { shows: Show[] }) {
                         <Arrow />
                       </span>
                     </div>
-                    <div className="mt-4 opacity-80 transition group-hover:opacity-100">
+                    <div className="mt-4 flex flex-wrap items-center gap-3 opacity-80 transition group-hover:opacity-100">
                       <Countdown to={s.start} tba={s.dateTBA} />
+                      {s.ticketUrl && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(s.ticketUrl, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="rounded-full px-4 py-2 text-xs font-bold text-black transition hover:brightness-110"
+                          style={{ background: b.accent }}
+                        >
+                          🎟 {t({ en: 'Tickets', ko: '티켓 예매' })}
+                        </button>
+                      )}
                     </div>
                   </Link>
                 </Reveal>

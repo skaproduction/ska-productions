@@ -92,6 +92,8 @@ export type Show = {
   venue: L;
   start: string; // ISO date, local show time
   end?: string;
+  /** Where to buy tickets (each show has its own); shown until the show is over. */
+  ticketUrl?: string;
   /** Promo video — an uploaded file's URL or a YouTube id: on the show page while upcoming, in After Show once it's over. */
   promoVideo?: string;
   /** Date not fixed yet: `start` is a placeholder at the end of the edition year, shown as "2027 · Date TBA". */
@@ -273,6 +275,8 @@ export type SiteSettings = {
 export type Notice = {
   id: string;
   kind: 'video' | 'notice';
+  /** slug of the show it's about: adds "See the show" and, while on sale, "Buy tickets" */
+  show?: string;
   title: L;
   body?: L;
   /** kind "video": an uploaded file's URL or a YouTube id */
@@ -291,6 +295,9 @@ export function youtubeId(v: string | undefined | null): string | null {
   const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
   return m ? m[1] : null;
 }
+
+/** What the news pop-up needs to know about a show a notice is about. */
+export type NoticeShow = { slug: string; title: string; edition: string; ticketUrl?: string; past: boolean };
 
 /** What a stored video points at: an uploaded file (URL) or a YouTube video (id). */
 export function videoSrc(v: string | undefined | null): { file: string } | { youtube: string } | null {

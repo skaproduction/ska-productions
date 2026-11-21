@@ -86,6 +86,19 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
                   <div className="mt-8">
                     <Countdown to={show.start} tba={show.dateTBA} size="lg" />
                   </div>
+                  {show.ticketUrl && (
+                    <Magnetic className="mt-8 inline-block">
+                      <a
+                        href={show.ticketUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ska-btn !px-7 !py-4 !text-base font-bold !text-black shadow-[0_20px_50px_-15px_var(--a1)]"
+                        style={{ background: b.accent }}
+                      >
+                        🎟 {t({ en: 'Buy tickets', ko: '티켓 예매' })} <Arrow />
+                      </a>
+                    </Magnetic>
+                  )}
                   <Notify show={show} brand={b} />
                   {show.promoVideo && (
                     <button onClick={() => setPromo(true)} className="group mt-6 flex items-center gap-4 text-left">

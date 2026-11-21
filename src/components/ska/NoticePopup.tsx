@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { liveNotices, type Notice } from './data';
+import { liveNotices, type Notice, type NoticeShow } from './data';
 import { Arrow, Layer, useLang } from './ui';
 import { Player, duckMusic } from './Video';
 
@@ -23,7 +23,7 @@ const readHidden = (): Record<string, string> => {
  * player, then text notices slide in as a NEWS card. Shown once per visit; "hide for today" skips
  * them until tomorrow.
  */
-export default function NoticePopup({ notices }: { notices?: Notice[] }) {
+export default function NoticePopup({ notices, shows = [] }: { notices?: Notice[]; shows?: NoticeShow[] }) {
   const { t } = useLang();
   const [phase, setPhase] = useState<'wait' | 'video' | 'news' | 'done'>('wait');
   const [vi, setVi] = useState(0);
@@ -99,18 +99,37 @@ export default function NoticePopup({ notices }: { notices?: Notice[] }) {
     </label>
   );
 
-  const CTA = ({ n }: { n: Notice }) =>
-    n.link ? (
-      <Link
-        href={n.link}
-        target={n.link.startsWith('/') ? undefined : '_blank'}
-        rel={n.link.startsWith('/') ? undefined : 'noopener noreferrer'}
-        className="ska-btn ska-btn-chrome mt-4 !py-2 !text-xs"
-        onClick={() => setPhase('done')}
-      >
-        {t(n.linkLabel?.en || n.linkLabel?.ko ? n.linkLabel : { en: 'Learn more', ko: '자세히 보기' })} <Arrow className="h-3 w-3" />
-      </Link>
-    ) : null;
+  // buttons: the show it's about (and its tickets while on sale), then any extra link
+  const CTA = ({ n }: { n: Notice }) => {
+    const s = n.show ? shows.find((x) => x.slug === n.show) : undefined;
+    const tickets = s && !s.past ? s.ticketUrl : undefined;
+    if (!s && !n.link) return null;
+    return (
+      <div className="mt-4 flex flex-wrap gap-2">
+        {tickets && (
+          <a href={tickets} target="_blank" rel="noopener noreferrer" className="ska-btn !bg-white !py-2 !text-xs !text-black" onClick={() => setPhase('done')}>
+            🎟 {t({ en: 'Buy tickets', ko: '티켓 예매' })}
+          </a>
+        )}
+        {s && (
+          <Link href={`/shows/${s.slug}`} className="ska-btn ska-btn-chrome !py-2 !text-xs" onClick={() => setPhase('done')}>
+            {t({ en: 'See the show', ko: '공연 보기' })} <Arrow className="h-3 w-3" />
+          </Link>
+        )}
+        {n.link && (
+          <Link
+            href={n.link}
+            target={n.link.startsWith('/') ? undefined : '_blank'}
+            rel={n.link.startsWith('/') ? undefined : 'noopener noreferrer'}
+            className="ska-btn ska-btn-ghost !py-2 !text-xs"
+            onClick={() => setPhase('done')}
+          >
+            {t(n.linkLabel?.en || n.linkLabel?.ko ? n.linkLabel : { en: 'Learn more', ko: '자세히 보기' })} <Arrow className="h-3 w-3" />
+          </Link>
+        )}
+      </div>
+    );
+  };
 
   if (phase === 'video' && videos.length) {
     const v = videos[Math.min(vi, videos.length - 1)];

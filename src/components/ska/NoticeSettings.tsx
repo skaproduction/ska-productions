@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { videoSrc, type L, type Notice, type SiteSettings } from './data';
+import { isPast, videoSrc, type L, type Notice, type Show, type SiteSettings } from './data';
 import { useLang } from './ui';
 import { VideoField } from './Video';
 
@@ -19,7 +19,7 @@ const toDraft = (ns: Notice[] = []) =>
 type Upload = (file: File, prefix: string, onProgress?: (pct: number) => void) => Promise<string>;
 
 /** Admin card for the homepage news pop-up: video notices open first, text notices follow as a NEWS card. */
-export default function NoticeSettings({ settings, upload, onToast }: { settings: SiteSettings; upload: Upload; onToast: (m: string) => void }) {
+export default function NoticeSettings({ settings, shows, upload, onToast }: { settings: SiteSettings; shows: Show[]; upload: Upload; onToast: (m: string) => void }) {
   const { t } = useLang();
   const router = useRouter();
   const saved = toDraft(settings.notices);
@@ -56,6 +56,15 @@ export default function NoticeSettings({ settings, upload, onToast }: { settings
   };
 
   const on = list.filter((n) => n.on).length;
+  const upcoming = shows.filter((s) => !isPast(s));
+  const past = shows.filter((s) => isPast(s)).reverse();
+  const name = (s: Show) => `${s.title} ${s.edition}`.trim();
+  // picking a show fills in an empty title with the show's name
+  const pickShow = (n: Notice, slug: string) => {
+    const s = shows.find((x) => x.slug === slug);
+    const emptyTitle = !n.title.en.trim() && !n.title.ko.trim();
+    update(n.id, { show: slug || undefined, ...(s && emptyTitle && { title: { en: name(s), ko: name(s) } }) });
+  };
 
   return (
     <section className="mt-10 rounded-2xl border border-white/[0.08] bg-[#0d0d12] p-5 sm:p-6">
@@ -132,6 +141,45 @@ export default function NoticeSettings({ settings, upload, onToast }: { settings
                 {n.kind === 'video' && (
                   <VideoField value={n.video ?? ''} onChange={(v) => update(n.id, { video: v })} upload={upload} prefix={`news-${n.id}`} onError={onToast} />
                 )}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <span className="shrink-0 text-xs text-white/55 sm:w-24">{t({ en: 'About show', ko: '관련 공연' })}</span>
+                  <select className="ska-input flex-1 [color-scheme:dark]" value={n.show ?? ''} onChange={(e) => pickShow(n, e.target.value)}>
+                    <option value="">{t({ en: '— none —', ko: '— 선택 안 함 —' })}</option>
+                    {upcoming.length > 0 && (
+                      <optgroup label={t({ en: 'Upcoming', ko: '예정 공연' })}>
+                        {upcoming.map((s) => (
+                          <option key={s.slug} value={s.slug}>
+                            {name(s)}
+                            {s.ticketUrl ? ' 🎟' : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {past.length > 0 && (
+                      <optgroup label={t({ en: 'Past', ko: '지난 공연' })}>
+                        {past.map((s) => (
+                          <option key={s.slug} value={s.slug}>
+                            {name(s)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+                {n.show &&
+                  (() => {
+                    const s = shows.find((x) => x.slug === n.show);
+                    if (!s) return <p className="-mt-1 text-xs text-amber-300">{t({ en: 'That show was deleted — pick another.', ko: '삭제된 공연이에요. 다시 골라주세요.' })}</p>;
+                    return (
+                      <p className="-mt-1 text-xs text-white/45">
+                        {t({ en: 'Adds a “See the show” button', ko: '"공연 보기" 버튼이 붙어요' })}
+                        {!isPast(s) &&
+                          (s.ticketUrl
+                            ? t({ en: ' and “Buy tickets”.', ko: ' + "티켓 예매" 버튼도 붙어요.' })
+                            : t({ en: '. No ticket link yet — add one in that show’s editor (Tickets).', ko: '. 티켓 링크는 아직 없어요 — 공연 편집의 "티켓 예매" 칸에서 넣으세요.' }))}
+                      </p>
+                    );
+                  })()}
                 <Pair label={t({ en: 'Title', ko: '제목' })} value={n.title} onChange={(v) => update(n.id, { title: v })} />
                 <Pair label={t({ en: 'Text (optional)', ko: '내용 (선택)' })} value={n.body ?? empty()} onChange={(v) => update(n.id, { body: v })} multiline />
                 <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
@@ -139,7 +187,7 @@ export default function NoticeSettings({ settings, upload, onToast }: { settings
                     className="ska-input"
                     value={n.link ?? ''}
                     onChange={(e) => update(n.id, { link: e.target.value })}
-                    placeholder={t({ en: 'Button link (optional) — https://… or /shows/…', ko: '버튼 링크 (선택) — https://… 또는 /shows/…' })}
+                    placeholder={t({ en: 'Extra button link (optional) — https://…', ko: '추가 버튼 링크 (선택) — https://…' })}
                   />
                   <input
                     className="ska-input"

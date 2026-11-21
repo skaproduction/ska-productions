@@ -1,6 +1,6 @@
 import 'server-only';
 import { BlobNotFoundError, del, head, list, put } from '@vercel/blob';
-import { revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -132,6 +132,8 @@ async function writeShows(shows: Show[]) {
     // each version doubles as a backup, so a bad edit can be undone
     await writeJsonBlob(BLOB_SHOWS, json);
     revalidateTag(SHOWS_TAG, { expire: 0 });
+    // search engines get the new list (and renamed addresses) right away, not after the hourly rebuild
+    revalidatePath('/sitemap.xml');
     return;
   }
   await mkdir(BACKUPS, { recursive: true });

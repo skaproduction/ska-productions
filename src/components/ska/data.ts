@@ -310,6 +310,20 @@ export const toSlug = (s: string) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
 
+/** A readable page address from a show's title: drops "in/the/of/at", adds the city only if it isn't already there, ≤ 60 chars on a word break. */
+export function suggestSlug(title: string, edition: string, city: string) {
+  const words = toSlug(`${title} ${edition}`).split('-').filter((w) => w && !['in', 'the', 'of', 'at'].includes(w));
+  const c = toSlug(city);
+  if (c && !words.join('-').includes(c)) words.push(...c.split('-'));
+  let out = '';
+  for (const w of words) {
+    const next = out ? `${out}-${w}` : w;
+    if (next.length > 60) break;
+    out = next;
+  }
+  return out;
+}
+
 /** The show a slug points at: its current address or one it had before. */
 export const findBySlug = <T extends { slug: string; oldSlugs?: string[] }>(shows: T[], slug?: string) =>
   slug ? (shows.find((s) => s.slug === slug) ?? shows.find((s) => s.oldSlugs?.includes(slug))) : undefined;

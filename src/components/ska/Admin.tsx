@@ -4,7 +4,7 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, toSlug, videoSrc } from './data';
+import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, suggestSlug, toSlug, videoSrc } from './data';
 import MusicSettings from './MusicSettings';
 import NoticeSettings from './NoticeSettings';
 import { VideoField } from './Video';
@@ -617,7 +617,7 @@ function ShowEditor({
                   </div>
                   <button
                     type="button"
-                    onClick={() => set('newSlug', toSlug([d.title, d.edition, d.city.en].filter(Boolean).join(' ')))}
+                    onClick={() => set('newSlug', suggestSlug(d.title, d.edition, d.city.en))}
                     className="ska-btn ska-btn-ghost shrink-0 !py-2 !text-xs"
                   >
                     {t({ en: 'Suggest from title', ko: '제목으로 추천' })}

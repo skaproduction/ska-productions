@@ -533,6 +533,21 @@ html:has(.ska) {
   }
 }
 
+/* dropdown lists: the browser draws them itself (white on Windows), so give them dark rows and light text */
+.ska select {
+  color-scheme: dark;
+}
+.ska select option,
+.ska select optgroup {
+  background-color: #16161c;
+  color: #f4f4f6;
+}
+.ska select optgroup {
+  color: rgba(244, 244, 246, 0.55);
+  font-style: normal;
+  font-weight: 600;
+}
+
 /* no focus box after a mouse/touch click; keyboard users still get a visible ring */
 .ska :is(button, a, [role='tab']):focus:not(:focus-visible) {
   outline: none;

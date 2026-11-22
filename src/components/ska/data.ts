@@ -112,6 +112,8 @@ export type Show = {
   timetableImages?: Photo[];
   /** Uploaded seat map (e.g. the ticketing site's venue map). Without it a generic layout is drawn. */
   seatMap?: string;
+  /** Show the Seat Map tab on the show page (off by default — tickets are sold on the ticketing site). */
+  seatMapOn?: boolean;
   stages: Stage[];
   zones: Zone[];
 };

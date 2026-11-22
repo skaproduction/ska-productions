@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BRANDS, ZONES, artistDay, brandById, showDays, isPast, type Artist, type BrandId, type L, type Photo, type Show, type SiteSettings, type Zone, suggestSlug, toSlug, videoSrc } from './data';
 import MusicSettings from './MusicSettings';
 import NoticeSettings from './NoticeSettings';
+import SeatMapEditor from './SeatMapEditor';
 import { VideoField } from './Video';
 import VisitorStats from './VisitorStats';
 import { Arrow, Layer, Poster, fmtDate, locale, useLang, type Lang } from './ui';
@@ -170,6 +171,7 @@ type Draft = {
   /** datetime-local value ("YYYY-MM-DDTHH:MM"), in the show's time zone */
   onSale: string;
   seatMap?: string;
+  seatMapOn: boolean;
   zones: Zone[];
 };
 
@@ -201,6 +203,7 @@ function toDraft(show?: Show, past = false): Draft {
       promoVideo: '',
       ticketUrl: '',
       onSale: '',
+      seatMapOn: false,
       zones: ZONES.map((z) => ({ ...z })),
     };
   }
@@ -228,6 +231,7 @@ function toDraft(show?: Show, past = false): Draft {
     // uploaded files keep their URL; a YouTube id is shown as a link
     promoVideo: !show.promoVideo ? '' : videoSrc(show.promoVideo) && 'file' in videoSrc(show.promoVideo)! ? show.promoVideo : `https://youtu.be/${show.promoVideo}`,
     seatMap: show.seatMap,
+    seatMapOn: !!show.seatMapOn,
     zones: show.zones.map((z) => ({ ...z, tier: { ...z.tier } })),
   };
 }
@@ -259,6 +263,7 @@ const fromDraft = (d: Draft) => ({
   ticketUrl: d.ticketUrl.trim() || undefined,
   ticketsOnSale: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.onSale) ? `${d.onSale}:00${d.tz}` : undefined,
   seatMap: d.seatMap,
+  seatMapOn: d.seatMapOn || undefined,
   zones: d.zones,
 });
 
@@ -475,6 +480,8 @@ function ShowEditor({
   const [d, setD] = useState<Draft>(initial);
   const [busy, setBusy] = useState<'save' | 'delete' | 'translate' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // the seat map section starts folded unless this show already shows its seat map
+  const [seatOpen, setSeatOpen] = useState(initial.seatMapOn);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
   const dirty = JSON.stringify(d) !== JSON.stringify(initial);
   const b = brandById(d.brand);
@@ -726,6 +733,34 @@ function ShowEditor({
               }}
             />
           </Group>
+
+          {/* seat map: folded away by default; open it only when a show needs one */}
+          <details className="group" open={seatOpen} onToggle={(e) => setSeatOpen(e.currentTarget.open)}>
+            <summary className="mb-5 flex cursor-pointer list-none items-center justify-between gap-4 border-b border-white/[0.07] pb-3 [&::-webkit-details-marker]:hidden">
+              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-white/80">
+                <span className="mr-2 inline-block text-white/40 transition group-open:rotate-90">▸</span>
+                {t({ en: 'Seat map', ko: '좌석 배치도' })}
+              </h3>
+              <span className="text-xs text-white/50">
+                {d.seatMapOn ? t({ en: 'On the show page', ko: '공연 페이지에 표시 중' }) : t({ en: 'Hidden · click to open', ko: '숨김 · 눌러서 열기' })}
+              </span>
+            </summary>
+            <label className="mb-5 flex cursor-pointer items-center gap-3 text-sm text-white/80">
+              <input type="checkbox" className="h-4 w-4 accent-white" checked={d.seatMapOn} onChange={(e) => set('seatMapOn', e.target.checked)} />
+              {t({ en: 'Show the Seat Map tab on this show’s page', ko: '이 공연 페이지에 좌석 배치도 탭 보이기' })}
+            </label>
+            <SeatMapEditor
+              image={d.seatMap}
+              zones={d.zones}
+              onImage={(url) => set('seatMap', url)}
+              onZones={(z) => set('zones', z)}
+              upload={uploadImage}
+              translate={translate}
+              canTranslate={canTranslate}
+              onError={onError}
+              slug={d.slug || d.title}
+            />
+          </details>
 
           {/* tickets */}
           <Group title={t({ en: 'Tickets', ko: '티켓 예매' })}>

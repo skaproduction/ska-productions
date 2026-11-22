@@ -309,6 +309,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     gallery,
     timetableImages,
     seatMap: media(r.seatMap),
+    ...(r.seatMapOn === true && { seatMapOn: true }),
     zones,
   };
 }

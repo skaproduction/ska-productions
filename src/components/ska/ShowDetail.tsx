@@ -5,10 +5,13 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { artistDay, brandById, showDays, type Brand, type L, type Photo, type Show } from './data';
 import AfterShow, { Lightbox } from './AfterShow';
+import SeatMap from './SeatMap';
 import { Player, VideoModal, VideoThumb } from './Video';
 import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, locale, useLang } from './ui';
 
 const AFTER_SHOW = { id: 'aftershow', label: { en: 'After Show', ko: 'After Show' } };
+
+const SEAT_MAP = { id: 'venue', label: { en: 'Seat Map', ko: '좌석 배치도' } };
 
 const TABS: { id: string; label: L }[] = [
   { id: 'lineup', label: { en: 'Lineup', ko: '라인업' } },
@@ -24,7 +27,9 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
   const archive = past && !!show.promoVideo;
   const hasAfter = photos.length > 0 || archive;
   // past shows lead with After Show; upcoming shows only get the tab once photos exist
-  const tabs = hasAfter ? (past ? [AFTER_SHOW, ...TABS] : [...TABS, AFTER_SHOW]) : TABS;
+  // the Seat Map tab only appears when it's switched on for this show in the admin
+  const main = show.seatMapOn ? [...TABS.slice(0, 2), SEAT_MAP, ...TABS.slice(2)] : TABS;
+  const tabs = hasAfter ? (past ? [AFTER_SHOW, ...main] : [...main, AFTER_SHOW]) : main;
   const [tab, setTab] = useState(past && hasAfter ? 'aftershow' : 'lineup');
   const [promo, setPromo] = useState(false);
   const closePromo = useCallback(() => setPromo(false), []);
@@ -170,6 +175,7 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
         <div key={tab} className="mx-auto max-w-7xl animate-[ska-in_.5s_ease]">
           {tab === 'lineup' && <Lineup show={show} brand={b} past={past} />}
           {tab === 'timetable' && <Timetable show={show} brand={b} />}
+          {tab === 'venue' && show.seatMapOn && <SeatMap show={show} brand={b} />}
           {tab === 'info' && <Info />}
           {tab === 'aftershow' && (
             <>

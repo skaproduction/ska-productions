@@ -97,6 +97,8 @@ export type Show = {
   oldSlugs?: string[];
   /** Where to buy tickets (each show has its own); shown until the show is over. */
   ticketUrl?: string;
+  /** When ticket sales open (ISO, show-local time). Only used in search-engine data (offers.validFrom). */
+  ticketsOnSale?: string;
   /** Promo video — an uploaded file's URL or a YouTube id: on the show page while upcoming, in After Show once it's over. */
   promoVideo?: string;
   /** Date not fixed yet: `start` is a placeholder at the end of the edition year, shown as "2027 · Date TBA". */

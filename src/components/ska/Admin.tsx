@@ -168,6 +168,8 @@ type Draft = {
   /** YouTube link as typed */
   promoVideo: string;
   ticketUrl: string;
+  /** datetime-local value ("YYYY-MM-DDTHH:MM"), in the show's time zone */
+  onSale: string;
   seatMap?: string;
   zones: Zone[];
 };
@@ -199,6 +201,7 @@ function toDraft(show?: Show, past = false): Draft {
       timetableImages: [],
       promoVideo: '',
       ticketUrl: '',
+      onSale: '',
       zones: ZONES.map((z) => ({ ...z })),
     };
   }
@@ -222,6 +225,7 @@ function toDraft(show?: Show, past = false): Draft {
     gallery: (show.gallery ?? []).map((p) => ({ ...p })),
     timetableImages: (show.timetableImages ?? []).map((p) => ({ ...p })),
     ticketUrl: show.ticketUrl ?? '',
+    onSale: show.ticketsOnSale?.match(ISO_RE)?.slice(1, 3).join('T') ?? '',
     // uploaded files keep their URL; a YouTube id is shown as a link
     promoVideo: !show.promoVideo ? '' : videoSrc(show.promoVideo) && 'file' in videoSrc(show.promoVideo)! ? show.promoVideo : `https://youtu.be/${show.promoVideo}`,
     seatMap: show.seatMap,
@@ -254,6 +258,7 @@ const fromDraft = (d: Draft) => ({
   timetableImages: d.timetableImages,
   promoVideo: d.promoVideo.trim() || undefined,
   ticketUrl: d.ticketUrl.trim() || undefined,
+  ticketsOnSale: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.onSale) ? `${d.onSale}:00${d.tz}` : undefined,
   seatMap: d.seatMap,
   zones: d.zones,
 });
@@ -759,6 +764,15 @@ function ShowEditor({
                 d.ticketUrl.trim() && <span className="text-xs text-amber-300">{t({ en: 'Use a full address starting with https://', ko: 'https:// 로 시작하는 전체 주소를 넣어주세요' })}</span>
               )}
             </div>
+            <Field label={t({ en: 'Ticket sales open (local time)', ko: '예매 오픈 일시 (현지 시간)' })} className="mt-4 sm:max-w-xs">
+              <input type="datetime-local" className="ska-input [color-scheme:dark]" value={d.onSale} onChange={(e) => set('onSale', e.target.value)} />
+            </Field>
+            <p className="mt-2 text-xs text-white/45">
+              {t({
+                en: 'Not shown on the page — it tells Google when tickets go on sale. Ticket prices come from the zone prices in the seat map above (e.g. ₩99,000 or NT$3,800).',
+                ko: '페이지에는 보이지 않고 구글 검색에 예매 시작 시점을 알려줍니다. 티켓 가격은 위 좌석 배치도의 구역별 가격(예: ₩99,000, NT$3,800)에서 가져와요.',
+              })}
+            </p>
           </Group>
 
           {/* promo video */}

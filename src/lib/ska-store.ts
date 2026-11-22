@@ -297,6 +297,7 @@ function normalizeShow(raw: unknown): Omit<Show, 'stages' | 'zones'> & { zones?:
     ...(r.dateTBA === true && { dateTBA: true }),
     ...(videoRef(r.promoVideo) && { promoVideo: videoRef(r.promoVideo)! }),
     ...(linkUrl(r.ticketUrl, false) && { ticketUrl: linkUrl(r.ticketUrl, false)! }),
+    ...(iso(r.ticketsOnSale, 'ticketsOnSale', false) && { ticketsOnSale: iso(r.ticketsOnSale, 'ticketsOnSale', false)! }),
     city: loc(r.city, 60, 'city'),
     country: loc(r.country, 60, 'country'),
     venue: loc(r.venue, 120, 'venue'),

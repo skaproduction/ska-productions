@@ -34,41 +34,6 @@ export function organizationLd() {
   };
 }
 
-// Currency of a zone price typed in the admin ("₩99,000", "NT$3,800", "99,000원"…); otherwise the show's country's.
-const CURRENCY_MARKS: [RegExp, string][] = [
-  [/KRW|₩|원/i, 'KRW'],
-  [/TWD|NT\$|NTD|元/i, 'TWD'],
-  [/JPY|円|¥|￥/i, 'JPY'],
-  [/HKD|HK\$/i, 'HKD'],
-  [/SGD|\bS\$/i, 'SGD'],
-  [/AUD|\bA\$/i, 'AUD'],
-  [/CAD|\bC\$/i, 'CAD'],
-  [/EUR|€/i, 'EUR'],
-  [/GBP|£/i, 'GBP'],
-  [/THB|฿/i, 'THB'],
-  [/USD|US\$|\$/i, 'USD'],
-];
-const COUNTRY_CURRENCY: Record<string, string> = {
-  korea: 'KRW', 'south korea': 'KRW', 대한민국: 'KRW', 한국: 'KRW',
-  taiwan: 'TWD', 대만: 'TWD',
-  japan: 'JPY', 일본: 'JPY',
-  'hong kong': 'HKD', 홍콩: 'HKD',
-  singapore: 'SGD', 싱가포르: 'SGD',
-  thailand: 'THB', 태국: 'THB',
-  usa: 'USD', 'united states': 'USD', 미국: 'USD',
-};
-
-function parsePrice(text: string, show: Show): { price: number; priceCurrency: string } | null {
-  const m = text.match(/\d[\d,]*(?:\.\d+)?/);
-  if (!m) return null;
-  const price = Number(m[0].replace(/,/g, ''));
-  const currency =
-    CURRENCY_MARKS.find(([re]) => re.test(text))?.[1] ??
-    COUNTRY_CURRENCY[show.country.en.trim().toLowerCase()] ??
-    COUNTRY_CURRENCY[show.country.ko.trim()];
-  return Number.isFinite(price) && currency ? { price, priceCurrency: currency } : null;
-}
-
 /** No end date (a one-day show): the end of the last timetable slot that day, or else just the day. */
 function endOf(show: Show) {
   if (show.end) return show.end;
@@ -89,19 +54,13 @@ export function eventLd(show: Show) {
   const name = `${show.title} ${show.edition}`.trim();
   const performers = show.lineup.filter((a) => a.announced && a.name.trim());
   const past = isPast(show);
-  // one Offer per priced seat zone; a single unpriced Offer while prices aren't set yet
-  const offerBase = {
+  // the ticket link; prices live on the ticketing site, so none are listed here
+  const offer = {
     '@type': 'Offer',
     url: show.ticketUrl,
     availability: 'https://schema.org/InStock',
     ...(show.ticketsOnSale && { validFrom: show.ticketsOnSale }),
   };
-  const priced = show.zones
-    .map((z) => {
-      const p = z.price && parsePrice(z.price, show);
-      return p && { ...offerBase, name: z.tier.en || z.tier.ko || z.label, ...p };
-    })
-    .filter(Boolean);
   return {
     '@context': 'https://schema.org',
     '@type': 'MusicEvent',
@@ -123,7 +82,7 @@ export function eventLd(show: Show) {
     performer: performers.length
       ? performers.map((a) => ({ '@type': 'PerformingGroup', name: a.name.trim() }))
       : [{ '@type': 'PerformingGroup', name: show.title }],
-    ...(show.ticketUrl && !past && { offers: priced.length ? priced : [offerBase] }),
+    ...(show.ticketUrl && !past && { offers: offer }),
   };
 }
 

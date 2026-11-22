@@ -9,7 +9,6 @@ import MusicSettings from './MusicSettings';
 import NoticeSettings from './NoticeSettings';
 import { VideoField } from './Video';
 import VisitorStats from './VisitorStats';
-import SeatMapEditor from './SeatMapEditor';
 import { Arrow, Layer, Poster, fmtDate, locale, useLang, type Lang } from './ui';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
@@ -728,24 +727,6 @@ function ShowEditor({
             />
           </Group>
 
-          {/* seat map */}
-          <Group
-            title={t({ en: 'Seat map', ko: '좌석 배치도' })}
-            aside={<span className="text-xs text-white/50">{d.zones.length} {t({ en: 'zones', ko: '구역' })}</span>}
-          >
-            <SeatMapEditor
-              image={d.seatMap}
-              zones={d.zones}
-              onImage={(url) => set('seatMap', url)}
-              onZones={(z) => set('zones', z)}
-              upload={uploadImage}
-              translate={translate}
-              canTranslate={canTranslate}
-              onError={onError}
-              slug={d.slug || d.title}
-            />
-          </Group>
-
           {/* tickets */}
           <Group title={t({ en: 'Tickets', ko: '티켓 예매' })}>
             <p className="-mt-2 mb-4 text-xs text-white/45">
@@ -769,8 +750,8 @@ function ShowEditor({
             </Field>
             <p className="mt-2 text-xs text-white/45">
               {t({
-                en: 'Not shown on the page — it tells Google when tickets go on sale. Ticket prices come from the zone prices in the seat map above (e.g. ₩99,000 or NT$3,800).',
-                ko: '페이지에는 보이지 않고 구글 검색에 예매 시작 시점을 알려줍니다. 티켓 가격은 위 좌석 배치도의 구역별 가격(예: ₩99,000, NT$3,800)에서 가져와요.',
+                en: 'Optional. Not shown on the page — it only tells Google when tickets go on sale.',
+                ko: '선택 사항이에요. 페이지에는 보이지 않고, 구글 검색에 예매 시작 시점만 알려줘요.',
               })}
             </p>
           </Group>

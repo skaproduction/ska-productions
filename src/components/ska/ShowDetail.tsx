@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { artistDay, brandById, showDays, type Brand, type L, type Photo, type Show } from './data';
 import AfterShow, { Lightbox } from './AfterShow';
-import SeatMap from './SeatMap';
 import { Player, VideoModal, VideoThumb } from './Video';
 import { Arrow, Countdown, Layer, Magnetic, Poster, Reveal, Tilt, fmtDate, locale, useLang } from './ui';
 
@@ -14,7 +13,6 @@ const AFTER_SHOW = { id: 'aftershow', label: { en: 'After Show', ko: 'After Show
 const TABS: { id: string; label: L }[] = [
   { id: 'lineup', label: { en: 'Lineup', ko: '라인업' } },
   { id: 'timetable', label: { en: 'Timetable', ko: '타임테이블' } },
-  { id: 'venue', label: { en: 'Seat Map', ko: '좌석 배치도' } },
   { id: 'info', label: { en: 'Info', ko: '안내' } },
 ];
 
@@ -172,7 +170,6 @@ export default function ShowDetail({ show, past }: { show: Show; past: boolean }
         <div key={tab} className="mx-auto max-w-7xl animate-[ska-in_.5s_ease]">
           {tab === 'lineup' && <Lineup show={show} brand={b} past={past} />}
           {tab === 'timetable' && <Timetable show={show} brand={b} />}
-          {tab === 'venue' && <SeatMap show={show} brand={b} />}
           {tab === 'info' && <Info />}
           {tab === 'aftershow' && (
             <>
